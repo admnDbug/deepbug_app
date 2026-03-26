@@ -24,12 +24,23 @@ class DeepBugApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Definimos el color institucional Teal
+    const Color colorInstitucional = Color(0xFF009688);
+
     return MaterialApp(
+      title: 'Deep Bug',
       debugShowCheckedModeBanner: false,
-      // Usamos el tema limpio que extrajimos a la carpeta "core"
-      theme: AppTheme.lightTheme, 
-      // Arrancamos con la pantalla de carga que extrajimos a la carpeta "splash"
-      home: const SplashScreen(), 
+      
+      // 1. TEMA CLARO (Traído de app_theme.dart)
+      theme: AppTheme.lightTheme,
+
+      // 2. TEMA OSCURO (Traído de app_theme.dart)
+      darkTheme: AppTheme.darkTheme,
+
+      // 3. SELECCIÓN DE TEMA (Seguir al Sistema)
+      themeMode: ThemeMode.system, // Cambia automáticamente según el celular
+
+      home: const SplashScreen(), // O tu LoginScreen
     );
   }
 }

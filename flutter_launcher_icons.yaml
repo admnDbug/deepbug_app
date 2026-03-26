@@ -1,0 +1,6 @@
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/images/Deepbug_light.png"
+  adaptive_icon_background: "#FFFFFF" # Fondo blanco para iconos adaptativos de Android
+  adaptive_icon_foreground: "assets/images/Deepbug_light.png" # Tu logo encima

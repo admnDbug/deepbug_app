@@ -1,5 +1,7 @@
+// Archivo: lib/features/splash/screens/splash_screen.dart
+
 import 'package:flutter/material.dart';
-import '../../auth/screens/login_screen.dart'; 
+import '../../auth/screens/login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -33,7 +35,11 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 1. Detectamos si el celular está en modo oscuro
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      // 2. El Scaffold ya hereda el color de fondo correcto de app_theme.dart
       body: Center(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -45,16 +51,27 @@ class _SplashScreenState extends State<SplashScreen> {
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 800),
                 opacity: _startAnimation ? 1.0 : 0.0,
-                child: const Text(
+                child: Text(
                   'Deep Bug',
                   maxLines: 1,
                   overflow: TextOverflow.clip,
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.black87),
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w800,
+                    // 3. El color del texto se adapta (negro en día, blanco en noche)
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                 ),
               ),
             ),
             const SizedBox(width: 8),
-            const Icon(Icons.bug_report, size: 50, color: Color(0xFFCCFF00)),
+            // 4. Cambiamos el Icon por tu Image.asset dinámica
+            Image.asset(
+              isDark ? 'assets/images/Deepbug_dark.png' : 'assets/images/Deepbug_light1.png',
+              height: 50, // Mismo tamaño que tenía tu ícono
+              width: 50,
+              fit: BoxFit.contain,
+            ),
           ],
         ),
       ),

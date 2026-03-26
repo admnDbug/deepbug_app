@@ -37,7 +37,7 @@ class _UnirseProyectoScreenState extends State<UnirseProyectoScreen> {
     });
 
     if (mounted) {
-      // Mostramos el mensaje de éxito 
+      // Mostramos el mensaje de éxito
       _mostrarDialogoExito();
     }
   }
@@ -48,7 +48,11 @@ class _UnirseProyectoScreenState extends State<UnirseProyectoScreen> {
       barrierDismissible: false, // El usuario no puede cerrarlo tocando afuera
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        icon: const Icon(Icons.check_circle_outline, color: Colors.green, size: 60),
+        icon: const Icon(
+          Icons.check_circle_outline,
+          color: Colors.green, // Este lo dejamos verde porque es de éxito universal
+          size: 60,
+        ),
         title: const Text('¡Código Autorizado!', textAlign: TextAlign.center),
         content: const Text(
           'Te has unido exitosamente al biomonitoreo como Colaborador. Ya puedes empezar a llenar los protocolos.',
@@ -64,11 +68,11 @@ class _UnirseProyectoScreenState extends State<UnirseProyectoScreen> {
                 // Regresamos al Dashboard (cerrando esta pantalla)
                 Navigator.pop(context);
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFCCFF00),
-                foregroundColor: Colors.black87,
+              // Quitamos los colores fijos para que el botón herede del tema (Teal)
+              child: const Text(
+                'Comenzar',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
-              child: const Text('Comenzar', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -96,7 +100,12 @@ class _UnirseProyectoScreenState extends State<UnirseProyectoScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(Icons.group_add_outlined, size: 80, color: Color(0xFFCCFF00)),
+              Icon(
+                Icons.group_add_outlined,
+                size: 80,
+                // Usamos el color primario del tema
+                color: Theme.of(context).colorScheme.primary,
+              ),
               const SizedBox(height: 24),
               const Text(
                 'Ingresa el código',
@@ -104,43 +113,69 @@ class _UnirseProyectoScreenState extends State<UnirseProyectoScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Pídele al Responsable del biomonitoreo que te comparta el código de acceso (Ej. LERM-X9).',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
+                // Usamos onSurfaceVariant para el gris dinámico
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 40),
-              
+
               // Campo de texto para el código
               TextField(
                 controller: _codigoController,
                 textCapitalization: TextCapitalization.characters, // Fuerza mayúsculas
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 2),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
+                ),
                 decoration: InputDecoration(
                   hintText: 'CÓDIGO',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none, // Quitamos el borde para un diseño más limpio
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2,
+                    ),
+                  ),
                   filled: true,
-                  fillColor: Colors.grey.shade50,
+                  // Fondo dinámico
+                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                 ),
               ),
-              
+
               const SizedBox(height: 40),
-              
+
               // Botón de validación o indicador de carga
               _estaCargando
-                  ? const Center(child: CircularProgressIndicator(color: Color(0xFFCCFF00)))
+                  ? Center(
+                      child: CircularProgressIndicator(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    )
                   : ElevatedButton(
                       onPressed: _validarCodigo,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black87,
-                        foregroundColor: Colors.white,
+                        // Adaptamos el botón negro: Negro de día, gris claro de noche
+                        backgroundColor: Theme.of(context).colorScheme.onSurface,
+                        foregroundColor: Theme.of(context).colorScheme.surface,
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       child: const Text(
                         'Ingresar',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
             ],

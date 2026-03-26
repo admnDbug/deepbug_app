@@ -58,7 +58,7 @@ class _CrearLaboratorioScreenState extends State<CrearLaboratorioScreen> {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        icon: const Icon(Icons.verified, color: Color(0xFFCCFF00), size: 60),
+        icon: const Icon(Icons.verified, color: Color(0xFF009688), size: 60),
         title: const Text('¡Laboratorio Creado!', textAlign: TextAlign.center),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -77,8 +77,12 @@ class _CrearLaboratorioScreenState extends State<CrearLaboratorioScreen> {
                 border: Border.all(color: Colors.grey.shade300),
               ),
               child: const Text(
-                'LAB-ESCOM-01', 
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 2),
+                'LAB-ESCOM-01',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
+                ),
               ),
             ),
           ],
@@ -91,7 +95,9 @@ class _CrearLaboratorioScreenState extends State<CrearLaboratorioScreen> {
                 // Navegamos al Dashboard y destruimos el historial de Onboarding
                 Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(builder: (context) => const DashboardScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => const DashboardScreen(),
+                  ),
                   (route) => false,
                 );
               },
@@ -99,7 +105,10 @@ class _CrearLaboratorioScreenState extends State<CrearLaboratorioScreen> {
                 backgroundColor: Colors.black87,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Ir a mi Dashboard', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Ir a mi Dashboard',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           ),
         ],
@@ -126,7 +135,11 @@ class _CrearLaboratorioScreenState extends State<CrearLaboratorioScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(Icons.biotech_outlined, size: 80, color: Color(0xFFCCFF00)),
+              const Icon(
+                Icons.biotech_outlined,
+                size: 80,
+                color: Color(0xFF009688),
+              ),
               const SizedBox(height: 24),
               const Text(
                 'Configura tu espacio',
@@ -148,7 +161,9 @@ class _CrearLaboratorioScreenState extends State<CrearLaboratorioScreen> {
                 decoration: InputDecoration(
                   labelText: 'Nombre del Laboratorio o Equipo',
                   hintText: 'Ej. Lab. de Ecología Dra. Eugenia',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   prefixIcon: const Icon(Icons.science_outlined),
                 ),
               ),
@@ -163,46 +178,65 @@ class _CrearLaboratorioScreenState extends State<CrearLaboratorioScreen> {
                   }
                   // Filtramos la lista ignorando mayúsculas y acentos
                   return _instituciones.where((String opcion) {
-                    return opcion.toLowerCase().contains(textEditingValue.text.toLowerCase());
+                    return opcion.toLowerCase().contains(
+                      textEditingValue.text.toLowerCase(),
+                    );
                   });
                 },
                 onSelected: (String seleccion) {
                   _institucionSeleccionada = seleccion;
                 },
-                fieldViewBuilder: (context, controller, focusNode, onEditingComplete) {
-                  // Guardamos lo que el usuario escriba libremente, por si su escuela no está en la lista
-                  controller.addListener(() {
-                    _institucionSeleccionada = controller.text;
-                  });
-                  
-                  return TextField(
-                    controller: controller,
-                    focusNode: focusNode,
-                    onEditingComplete: onEditingComplete,
-                    decoration: InputDecoration(
-                      labelText: 'Institución (Busca o escribe una nueva)',
-                      hintText: 'Ej. IPN - ENCB',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      prefixIcon: const Icon(Icons.account_balance_outlined),
-                    ),
-                  );
-                },
+                fieldViewBuilder:
+                    (context, controller, focusNode, onEditingComplete) {
+                      // Guardamos lo que el usuario escriba libremente, por si su escuela no está en la lista
+                      controller.addListener(() {
+                        _institucionSeleccionada = controller.text;
+                      });
+
+                      return TextField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        onEditingComplete: onEditingComplete,
+                        decoration: InputDecoration(
+                          labelText: 'Institución (Busca o escribe una nueva)',
+                          hintText: 'Ej. IPN - ENCB',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.account_balance_outlined,
+                          ),
+                        ),
+                      );
+                    },
               ),
-              
+
               const SizedBox(height: 40),
 
               // Botón de Crear
               _estaCargando
-                  ? const Center(child: CircularProgressIndicator(color: Color(0xFFCCFF00)))
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF009688),
+                      ),
+                    )
                   : ElevatedButton(
                       onPressed: _crearLaboratorio,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFCCFF00),
+                        backgroundColor: const Color(0xFF009688),
                         foregroundColor: Colors.black87,
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      child: const Text('Crear Laboratorio', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Crear Laboratorio',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
             ],
           ),

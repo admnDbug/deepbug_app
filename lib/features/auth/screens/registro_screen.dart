@@ -18,7 +18,8 @@ class _RegistroScreenState extends State<RegistroScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView( // Permite hacer scroll si el teclado tapa la pantalla
+        child: SingleChildScrollView(
+          // Permite hacer scroll si el teclado tapa la pantalla
           padding: const EdgeInsets.all(24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -32,7 +33,12 @@ class _RegistroScreenState extends State<RegistroScreen> {
                   onPressed: () => Navigator.pop(context), // Regresa al Login
                 ),
               ),
-              const Icon(Icons.person_add_alt_1_outlined, size: 80, color: Color(0xFFCCFF00)),
+              Icon(
+                Icons.person_add_alt_1_outlined,
+                size: 80,
+                // Usamos el color principal del tema de forma dinámica
+                color: Theme.of(context).colorScheme.primary,
+              ),
               const SizedBox(height: 24),
               const Text(
                 'Crear Cuenta',
@@ -42,27 +48,30 @@ class _RegistroScreenState extends State<RegistroScreen> {
               const SizedBox(height: 8),
               const Text(
                 'Únete a Deep Bug para realizar biomonitoreos',
-                style: TextStyle(color: Colors.grey),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 40),
 
-              // Formulario
-              const TextField(
+              // --- FORMULARIO ---
+              TextField(
                 textCapitalization: TextCapitalization.words,
                 decoration: InputDecoration(
                   labelText: 'Nombre completo',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.person_outline),
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  prefixIcon: const Icon(Icons.person_outline),
                 ),
               ),
               const SizedBox(height: 20),
-              const TextField(
+              TextField(
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   labelText: 'Correo electrónico',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.email_outlined),
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  prefixIcon: const Icon(Icons.email_outlined),
                 ),
               ),
               const SizedBox(height: 20),
@@ -70,10 +79,16 @@ class _RegistroScreenState extends State<RegistroScreen> {
                 obscureText: _ocultarPassword,
                 decoration: InputDecoration(
                   labelText: 'Contraseña',
-                  border: const OutlineInputBorder(),
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
-                    icon: Icon(_ocultarPassword ? Icons.visibility_off : Icons.visibility),
+                    icon: Icon(
+                      _ocultarPassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                    ),
                     onPressed: () {
                       setState(() {
                         _ocultarPassword = !_ocultarPassword;
@@ -84,25 +99,30 @@ class _RegistroScreenState extends State<RegistroScreen> {
               ),
               const SizedBox(height: 40),
 
+              // --- BOTONES ---
               ElevatedButton(
                 onPressed: () {
                   // AQUI OCURRE LA MAGIA
                   Navigator.pushAndRemoveUntil(
                     context,
-                    MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+                    MaterialPageRoute(
+                      builder: (context) => const OnboardingScreen(),
+                    ),
                     (Route<dynamic> route) => false, // Esto borra las pantallas anteriores
                   );
                 },
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: const Color(0xFFCCFF00),
-                  foregroundColor: Colors.black87,
+                  // Eliminamos el color fijo, el Theme se encarga de pintarlo
                 ),
-                child: const Text('Registrarme', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'Registrarme',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Enlace para volver al login si ya tiene cuenta
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -110,7 +130,14 @@ class _RegistroScreenState extends State<RegistroScreen> {
                   const Text('¿Ya tienes una cuenta?'),
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Inicia Sesión', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      'Inicia Sesión',
+                      style: TextStyle(
+                        // Color dinámico para que resalte en cualquier tema
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ],
               ),

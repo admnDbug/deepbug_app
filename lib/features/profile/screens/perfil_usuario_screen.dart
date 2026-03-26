@@ -2,8 +2,6 @@
 
 import 'package:flutter/material.dart';
 import '../../auth/screens/login_screen.dart';
-// Importamos la pantalla para unirse a proyectos/equipos
-import '../../dashboard/screens/unirse_proyecto_screen.dart';
 
 class PerfilUsuarioScreen extends StatelessWidget {
   const PerfilUsuarioScreen({super.key});
@@ -11,11 +9,11 @@ class PerfilUsuarioScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      // Quitamos backgroundColor fijo
       appBar: AppBar(
         title: const Text('Mi Perfil', style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        // Quitamos backgroundColor y elevation fijos (los toma del app_theme)
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -23,13 +21,14 @@ class PerfilUsuarioScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // --- FOTO DE PERFIL Y DATOS PRINCIPALES ---
-              const CircleAvatar(
+              // --- FOTO DE PERFIL Y DATOS ---
+              CircleAvatar(
                 radius: 50,
-                backgroundColor: Color(0xFFCCFF00),
-                child: Text(
+                // Color primario dinámico
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                child: const Text(
                   'OL',
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.black87),
+                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
               ),
               const SizedBox(height: 16),
@@ -38,70 +37,91 @@ class PerfilUsuarioScreen extends StatelessWidget {
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'oscar.leyva@escom.ipn.mx', 
-                style: TextStyle(fontSize: 14, color: Colors.grey),
+              Text(
+                'oscar.leyva@escom.ipn.mx',
+                style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 8),
-              
+
+              // --- BADGE DE ROL ---
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.black87,
+                  // Usamos un color secundario/terciario para que resalte elegante en ambos modos
+                  color: Theme.of(context).colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Text(
-                  'Responsable de Laboratorio',
-                  style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                child: Text(
+                  'Responsable',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-              
-              const SizedBox(height: 40),
-
-              // --- SECCIÓN DE INFORMACIÓN Y EQUIPOS ---
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text('ESPACIO DE TRABAJO ACTUAL', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1)),
-              ),
-              const SizedBox(height: 8),
-              
-              // 1. Tarjeta de Laboratorio (Ahora abre el selector)
-              _buildConfigTile(
-                icon: Icons.science_outlined,
-                title: 'Laboratorio / Organización',
-                subtitle: 'Desarrollo Deep Bug (ESCOM)',
-                onTap: () => _mostrarSelectorLaboratorios(context), // Llama a la nueva función
-              ),
-              
-              // 2. Tarjeta del Código (Texto actualizado para mayor claridad)
-              _buildConfigTile(
-                icon: Icons.qr_code_2_outlined,
-                title: 'Código de Invitación (Laboratorio)',
-                subtitle: 'LAB-ESCOM-01 (Toca para copiar)',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Código de Laboratorio copiado al portapapeles'))
-                  );
-                },
-              ),
-
-              const SizedBox(height: 24),
-
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text('AJUSTES DE LA CUENTA', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1)),
-              ),
-              const SizedBox(height: 8),
-              _buildConfigTile(icon: Icons.person_outline, title: 'Editar datos personales', onTap: () {}),
-              _buildConfigTile(icon: Icons.notifications_none, title: 'Notificaciones', onTap: () {}),
-              _buildConfigTile(icon: Icons.security_outlined, title: 'Seguridad y Contraseña', onTap: () {}),
 
               const SizedBox(height: 40),
 
+              // --- AJUSTES DE LA CUENTA ---
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'AJUSTES DE LA CUENTA',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    letterSpacing: 1,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              
+              _buildConfigTile(
+                context,
+                icon: Icons.person_outline,
+                title: 'Editar datos personales',
+                onTap: () => _mostrarEditarDatos(context),
+              ),
+              _buildConfigTile(
+                context,
+                icon: Icons.notifications_none,
+                title: 'Preferencias de Notificaciones',
+                onTap: () => _mostrarAjustesNotificaciones(context),
+              ),
+              _buildConfigTile(
+                context,
+                icon: Icons.security_outlined,
+                title: 'Cambiar Contraseña',
+                onTap: () => _mostrarSeguridad(context),
+              ),
+
+              // Tile de Modo Oscuro adaptado a CardTheme
+              Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                // Quitamos color, elevation y shape para que lo herede de app_theme.dart
+                child: SwitchListTile(
+                  secondary: const Icon(Icons.dark_mode_outlined), // Sin color fijo
+                  title: const Text('Modo Oscuro', style: TextStyle(fontWeight: FontWeight.bold)),
+                  value: false, // <-- Esto lo controlaremos con Provider en la Semana 4
+                  activeColor: Theme.of(context).colorScheme.primary, // Color primario
+                  onChanged: (bool value) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('La conexión del tema manual requiere Provider. Se implementará en la Semana 4.')));
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 40),
+
+              // --- CERRAR SESIÓN ---
               OutlinedButton.icon(
                 onPressed: () => _mostrarDialogoCerrarSesion(context),
                 icon: const Icon(Icons.logout, color: Colors.red),
-                label: const Text('Cerrar Sesión', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                label: const Text(
+                  'Cerrar Sesión',
+                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                ),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 50),
                   side: const BorderSide(color: Colors.red),
@@ -109,7 +129,10 @@ class PerfilUsuarioScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              const Text('Deep Bug v1.0.0 (Beta)', style: TextStyle(color: Colors.grey, fontSize: 12)),
+              Text(
+                'Deep Bug v1.0.0 (Beta)',
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12),
+              ),
             ],
           ),
         ),
@@ -117,82 +140,145 @@ class PerfilUsuarioScreen extends StatelessWidget {
     );
   }
 
-  // Widget reciclable
-  Widget _buildConfigTile({required IconData icon, required String title, String? subtitle, required VoidCallback onTap}) {
+  // Se agrega BuildContext para heredar estilos si se requiere
+  Widget _buildConfigTile(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
     return Card(
-      elevation: 0,
-      color: Colors.white,
       margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+      // Quitamos colores y bordes fijos, CardTheme se encarga
       child: ListTile(
-        leading: Icon(icon, color: Colors.black87),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: subtitle != null ? Text(subtitle, style: const TextStyle(fontSize: 12)) : null,
+        leading: Icon(icon), // Sin color fijo
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)), // Sin color fijo
         trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
         onTap: onTap,
       ),
     );
   }
 
-  void _mostrarSelectorLaboratorios(BuildContext context) {
+  // --- MODALES DE CONFIGURACIÓN ---
+
+  void _mostrarEditarDatos(BuildContext context) {
+    _mostrarModalBase(context, 'Editar Datos Personales', [
+      _buildCampoTexto(context, 'Nombre completo', inicial: 'Oscar Leyva'),
+      _buildCampoTexto(context, 'Correo electrónico', inicial: 'oscar.leyva@escom.ipn.mx'),
+      _buildCampoTexto(context, 'Teléfono (Opcional)', inicial: ''),
+      const SizedBox(height: 16),
+      _buildBotonGuardar(context, 'Actualizar Datos'),
+    ]);
+  }
+
+  void _mostrarAjustesNotificaciones(BuildContext context) {
+    _mostrarModalBase(context, 'Notificaciones', [
+      Text(
+        'Elige qué alertas deseas recibir en tu dispositivo.',
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+      ),
+      const SizedBox(height: 16),
+      SwitchListTile(
+        title: const Text('Nuevos colaboradores se unen'),
+        value: true,
+        activeColor: Theme.of(context).colorScheme.primary,
+        onChanged: (v) {},
+      ),
+      SwitchListTile(
+        title: const Text('Recordatorios de Protocolo 1'),
+        value: true,
+        activeColor: Theme.of(context).colorScheme.primary,
+        onChanged: (v) {},
+      ),
+      SwitchListTile(
+        title: const Text('Actualizaciones de la plataforma'),
+        value: false,
+        activeColor: Theme.of(context).colorScheme.primary,
+        onChanged: (v) {},
+      ),
+      const SizedBox(height: 16),
+      _buildBotonGuardar(context, 'Guardar Preferencias'),
+    ]);
+  }
+
+  void _mostrarSeguridad(BuildContext context) {
+    _mostrarModalBase(context, 'Seguridad', [
+      _buildCampoTexto(context, 'Contraseña actual', esPassword: true),
+      _buildCampoTexto(context, 'Nueva contraseña', esPassword: true),
+      _buildCampoTexto(context, 'Confirmar nueva contraseña', esPassword: true),
+      const SizedBox(height: 16),
+      _buildBotonGuardar(context, 'Cambiar Contraseña'),
+    ]);
+  }
+
+  void _mostrarModalBase(BuildContext context, String titulo, List<Widget> contenido) {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // Esto ayuda a que el menú se adapte mejor si tienes muchos laboratorios
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min, 
-              crossAxisAlignment: CrossAxisAlignment.start,
+      isScrollControlled: true,
+      // Quitamos backgroundColor: Colors.white para que el modo oscuro pinte su fondo oscuro
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Tus Laboratorios', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                const Text('Cambia de espacio de trabajo o únete a uno nuevo.', style: TextStyle(color: Colors.grey, fontSize: 14)),
-                const Divider(height: 24),
-
-                // Laboratorio Activo
-                ListTile(
-                  leading: const CircleAvatar(backgroundColor: Color(0xFFCCFF00), child: Icon(Icons.science, color: Colors.black87, size: 20)),
-                  title: const Text('Desarrollo Deep Bug', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: const Text('Responsable • IPN ESCOM'),
-                  trailing: const Icon(Icons.check_circle, color: Colors.green),
-                  onTap: () => Navigator.pop(context),
-                ),
-
-                // Otro laboratorio simulado al que perteneces
-                ListTile(
-                  leading: CircleAvatar(backgroundColor: Colors.grey.shade200, child: const Icon(Icons.science, color: Colors.grey, size: 20)),
-                  title: const Text('Ecología Acuática ENCB'),
-                  subtitle: const Text('Colaborador • IPN ENCB'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cambiando a Ecología Acuática...')));
-                  },
-                ),
-
-                const Divider(height: 24),
-
-                // Opciones para agregar nuevos
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(8)),
-                    child: const Icon(Icons.group_add, color: Colors.white, size: 20),
-                  ),
-                  title: const Text('Unirme a otro Laboratorio', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: const Text('Usar un código de invitación'),
-                  onTap: () {
-                    Navigator.pop(context); // Cierra el menú inferior
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const UnirseProyectoScreen()));
-                  },
+                Text(titulo, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+            ...contenido,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCampoTexto(BuildContext context, String etiqueta, {String inicial = '', bool esPassword = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextFormField(
+        initialValue: inicial,
+        obscureText: esPassword,
+        decoration: InputDecoration(
+          labelText: etiqueta,
+          filled: true,
+          fillColor: Theme.of(context).colorScheme.surfaceContainerHighest, // Color dinámico
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none, // Quitamos borde base 
           ),
-        );
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2), // Borde enfocado primario
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBotonGuardar(BuildContext context, String texto) {
+    return ElevatedButton(
+      onPressed: () {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$texto exitosamente')));
       },
+      style: ElevatedButton.styleFrom(
+        // Quitamos backgroundColor y foregroundColor fijos
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        // La forma (shape) ya la está heredando del app_theme, pero si quieres asegurarla:
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      child: Text(texto, style: const TextStyle(fontWeight: FontWeight.bold)),
     );
   }
 
@@ -201,17 +287,18 @@ class PerfilUsuarioScreen extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('¿Cerrar sesión?'),
-        content: const Text('Tendrás que volver a ingresar tu correo y contraseña para entrar a tus proyectos.'),
+        content: const Text('Tendrás que volver a ingresar tus credenciales.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar', style: TextStyle(color: Colors.grey))),
           TextButton(
-            onPressed: () {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
-                (route) => false,
-              );
-            },
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginScreen()),
+              (route) => false,
+            ),
             child: const Text('Salir', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
           ),
         ],
