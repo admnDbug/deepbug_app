@@ -51,41 +51,33 @@ class _Protocolo3ScreenState extends State<Protocolo3Screen> {
     _cargarBorrador();
   }
 
-  // --- CARGAR DATOS (OFFLINE FIRST) ---
+  // --- CARGAR DATOS (SÓLO LOCAL - OFFLINE) ---
   Future<void> _cargarBorrador() async {
     final localDB = LocalDBService();
-    final cloudService = ProtocoloService();
     
+    // 1. SOLAMENTE buscamos el progreso guardado en el teléfono (SQLite)
     Map<String, dynamic>? data = await localDB.obtenerBorradorLocal(widget.biomonitoreoId, 3);
-    
-    if (data == null) {
-      data = await cloudService.obtenerMiBorrador(widget.biomonitoreoId, 3);
-      if (data != null && data['datos_formulario'] != null) {
-        await localDB.guardarBorradorLocal(
-          biomonitoreoId: widget.biomonitoreoId,
-          protocoloNumero: 3,
-          datosFormulario: data['datos_formulario'],
-          sincronizado: 1, 
-        );
-      }
-    }
+
+    // ELIMINADO: La llamada a cloudService.obtenerMiBorrador() se quitó por completo
+    // para evitar que la nube sobrescriba lo que el técnico esté midiendo en campo.
 
     if (data != null && data['datos_formulario'] != null) {
       final form = data['datos_formulario'];
       
       if (mounted) {
         setState(() {
-          _tipoGradiente = form['tipo_gradiente'] ?? 'Alto';
+          _tipoGradiente = form['tipo_gradiente']?.toString() ?? 'Alto';
           
-          if (form['puntajes_alto'] != null) {
+          if (form['puntajes_alto'] != null && form['puntajes_alto'] is Map) {
             form['puntajes_alto'].forEach((k, v) => _puntajesAlto[k] = (v as num).toDouble());
           }
-          if (form['puntajes_bajo'] != null) {
+          if (form['puntajes_bajo'] != null && form['puntajes_bajo'] is Map) {
             form['puntajes_bajo'].forEach((k, v) => _puntajesBajo[k] = (v as num).toDouble());
           }
         });
       }
     }
+    
     if (mounted) {
       setState(() => _isLoadingData = false);
     }

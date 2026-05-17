@@ -80,24 +80,15 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
     super.dispose();
   }
 
-  // --- CARGAR DATOS (OFFLINE FIRST) ---
+  // --- CARGAR DATOS (SÓLO LOCAL - OFFLINE) ---
   Future<void> _cargarBorrador() async {
     final localDB = LocalDBService();
-    final cloudService = ProtocoloService();
     
+    // 1. SOLAMENTE buscamos el progreso guardado en el teléfono (SQLite)
     Map<String, dynamic>? data = await localDB.obtenerBorradorLocal(widget.biomonitoreoId, 2);
     
-    if (data == null) {
-      data = await cloudService.obtenerMiBorrador(widget.biomonitoreoId, 2);
-      if (data != null && data['datos_formulario'] != null) {
-        await localDB.guardarBorradorLocal(
-          biomonitoreoId: widget.biomonitoreoId,
-          protocoloNumero: 2,
-          datosFormulario: data['datos_formulario'],
-          sincronizado: 1, 
-        );
-      }
-    }
+    // ELIMINADO: La llamada a cloudService.obtenerMiBorrador() se quitó por completo.
+    // Con esto evitamos que la nube sobrescriba la data y borre nuestra fotografía offline.
 
     if (data != null && data['datos_formulario'] != null) {
       final form = data['datos_formulario'];
@@ -108,42 +99,44 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
             _getCtrl(key).text = value.toString();
           });
         }
-        // Cargar variables simples (Radios)
-        _horarioSeleccionado = form['horario'] ?? 'AM';
-        _lluviasPrevias = form['lluvias'] ?? 'No';
-        _subsistemaRio = form['subsistema'] ?? '';
-        _temperaturaAgua = form['temp_agua_radio'] ?? '';
-        _tipologiaCurso = form['tipologia'] ?? '';
-        _residuosSolidos = form['residuos'] ?? '';
-        _rectificacion = form['rectificacion'] ?? '';
-        _canalizado = form['canalizado'] ?? '';
-        _presenciaAceites = form['aceites'] ?? '';
-        _extracciones = form['extracciones'] ?? '';
-        _presenciaPresas = form['presas'] ?? '';
-        _erosionLocal = form['erosion'] ?? '';
-        _coberturaDosel = form['dosel'] ?? '';
-        _fotoBase64 = form['foto_base64'];
+        
+        // Cargar variables simples (Radios y selects)
+        _horarioSeleccionado = form['horario']?.toString() ?? 'AM';
+        _lluviasPrevias = form['lluvias']?.toString() ?? 'No';
+        _subsistemaRio = form['subsistema']?.toString() ?? '';
+        _temperaturaAgua = form['temp_agua_radio']?.toString() ?? '';
+        _tipologiaCurso = form['tipologia']?.toString() ?? '';
+        _residuosSolidos = form['residuos']?.toString() ?? '';
+        _rectificacion = form['rectificacion']?.toString() ?? '';
+        _canalizado = form['canalizado']?.toString() ?? '';
+        _presenciaAceites = form['aceites']?.toString() ?? '';
+        _extracciones = form['extracciones']?.toString() ?? '';
+        _presenciaPresas = form['presas']?.toString() ?? '';
+        _erosionLocal = form['erosion']?.toString() ?? '';
+        _coberturaDosel = form['dosel']?.toString() ?? '';
+        
+        // RECUPERAMOS LA FOTO SANA Y SALVA
+        _fotoBase64 = form['foto_base64']?.toString();
+
+        // Función de seguridad interna para mapear los checkboxes
+        bool parseBool(dynamic v) => v == true || v == 'true';
 
         // Cargar mapas (Checkboxes)
-        if (form['clima'] != null) form['clima'].forEach((k, v) => _clima[k] = v);
-        if (form['bosques'] != null) form['bosques'].forEach((k, v) => _bosques[k] = v);
-        if (form['sucesional'] != null) form['sucesional'].forEach((k, v) => _estadoSucesional[k] = v);
-        if (form['cult_perm'] != null) form['cult_perm'].forEach((k, v) => _cultivosPermanentes[k] = v);
-        if (form['cult_anuales'] != null) form['cult_anuales'].forEach((k, v) => _cultivosAnuales[k] = v);
-        if (form['veg_arbustiva'] != null) form['veg_arbustiva'].forEach((k, v) => _vegArbustiva[k] = v);
-        if (form['otros_usos'] != null) form['otros_usos'].forEach((k, v) => _otrosUsos[k] = v);
-        if (form['descargas'] != null) form['descargas'].forEach((k, v) => _descargas[k] = v);
-        if (form['tipo_efluente'] != null) form['tipo_efluente'].forEach((k, v) => _tipoEfluente[k] = v);
-        if (form['veg_acuatica'] != null) form['veg_acuatica'].forEach((k, v) => _vegAcuatica[k] = v);
-        // Validamos que sea un mapa (datos nuevos) y no un String (datos viejos)
-        if (form['olor'] != null && form['olor'] is Map) {
-          form['olor'].forEach((k, v) => _olorAgua[k] = v);
-        }
-        if (form['color'] != null && form['color'] is Map) {
-          form['color'].forEach((k, v) => _colorAgua[k] = v);
-        }
+        if (form['clima'] is Map) form['clima'].forEach((k, v) => _clima[k] = parseBool(v));
+        if (form['bosques'] is Map) form['bosques'].forEach((k, v) => _bosques[k] = parseBool(v));
+        if (form['sucesional'] is Map) form['sucesional'].forEach((k, v) => _estadoSucesional[k] = parseBool(v));
+        if (form['cult_perm'] is Map) form['cult_perm'].forEach((k, v) => _cultivosPermanentes[k] = parseBool(v));
+        if (form['cult_anuales'] is Map) form['cult_anuales'].forEach((k, v) => _cultivosAnuales[k] = parseBool(v));
+        if (form['veg_arbustiva'] is Map) form['veg_arbustiva'].forEach((k, v) => _vegArbustiva[k] = parseBool(v));
+        if (form['otros_usos'] is Map) form['otros_usos'].forEach((k, v) => _otrosUsos[k] = parseBool(v));
+        if (form['descargas'] is Map) form['descargas'].forEach((k, v) => _descargas[k] = parseBool(v));
+        if (form['tipo_efluente'] is Map) form['tipo_efluente'].forEach((k, v) => _tipoEfluente[k] = parseBool(v));
+        if (form['veg_acuatica'] is Map) form['veg_acuatica'].forEach((k, v) => _vegAcuatica[k] = parseBool(v));
+        if (form['olor'] is Map) form['olor'].forEach((k, v) => _olorAgua[k] = parseBool(v));
+        if (form['color'] is Map) form['color'].forEach((k, v) => _colorAgua[k] = parseBool(v));
       });
     }
+    
     if (mounted) {
       setState(() => _isLoadingData = false);
     }

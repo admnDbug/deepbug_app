@@ -8,7 +8,8 @@ import '../../core/constants/api_constants.dart'; // Asegúrate de que esta ruta
 class ProtocoloService {
   
   // --- Función para Enviar/Sincronizar Protocolos ---
-  Future<bool> sincronizarProtocolo(String biomonitoreoId, int numeroProtocolo, Map<String, dynamic> datosFormulario) async {
+  // AÑADIDO: Parámetro opcional datosProtocolo5
+  Future<bool> sincronizarProtocolo(String biomonitoreoId, int numeroProtocolo, Map<String, dynamic>? datosFormulario, {Map<String, dynamic>? datosProtocolo5}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
@@ -16,15 +17,25 @@ class ProtocoloService {
 
       final url = Uri.parse('${ApiConstants.baseUrl}/protocolos/sincronizar');
 
-      // Armamos el paquete exactamente como lo espera Node.js (un arreglo de protocolos)
+      // Armamos el mapa dinámico respetando si es Protocolo 1-4 o Protocolo 5
+      final Map<String, dynamic> protocoloData = {
+        "biomonitoreo_id": biomonitoreoId,
+        "datos_formulario": datosFormulario,
+        "protocolo_numero": numeroProtocolo
+      };
+
+      // Si hay datos normales (Protocolos 1 al 4) los inyecta
+      if (datosFormulario != null) {
+        protocoloData["datos_formulario"] = datosFormulario;
+      }
+
+      // Si es el Protocolo 5, inyecta su llave especial
+      if (datosProtocolo5 != null) {
+        protocoloData["datos_protocolo_5"] = datosProtocolo5;
+      }
+
       final bodyParams = jsonEncode({
-        "protocolos": [
-          {
-            "biomonitoreo_id": biomonitoreoId,
-            "protocolo_numero": numeroProtocolo,
-            "datos_formulario": datosFormulario
-          }
-        ]
+        "protocolos": [protocoloData]
       });
 
       final response = await http.post(

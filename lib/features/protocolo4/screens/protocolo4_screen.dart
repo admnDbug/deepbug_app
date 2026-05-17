@@ -51,24 +51,15 @@ class _Protocolo4ScreenState extends State<Protocolo4Screen> {
     super.dispose();
   }
 
-  // --- CARGAR DATOS (OFFLINE FIRST) ---
+  // --- CARGAR DATOS (SÓLO LOCAL - OFFLINE) ---
   Future<void> _cargarBorrador() async {
     final localDB = LocalDBService();
-    final cloudService = ProtocoloService();
     
+    // 1. SOLAMENTE buscamos el progreso guardado en el teléfono (SQLite)
     Map<String, dynamic>? data = await localDB.obtenerBorradorLocal(widget.biomonitoreoId, 4);
     
-    if (data == null) {
-      data = await cloudService.obtenerMiBorrador(widget.biomonitoreoId, 4);
-      if (data != null && data['datos_formulario'] != null) {
-        await localDB.guardarBorradorLocal(
-          biomonitoreoId: widget.biomonitoreoId,
-          protocoloNumero: 4,
-          datosFormulario: data['datos_formulario'],
-          sincronizado: 1, 
-        );
-      }
-    }
+    // ELIMINADO: La llamada a cloudService.obtenerMiBorrador() se quitó por completo.
+    // Con esto evitamos sobreescrituras en campo si la señal de internet es intermitente.
 
     if (data != null && data['datos_formulario'] != null) {
       final form = data['datos_formulario'];
@@ -92,6 +83,7 @@ class _Protocolo4ScreenState extends State<Protocolo4Screen> {
         });
       }
     }
+    
     if (mounted) {
       setState(() => _isLoadingData = false);
     }

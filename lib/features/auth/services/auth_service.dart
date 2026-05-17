@@ -23,13 +23,22 @@ class AuthService {
         // --- GUARDAMOS EL TOKEN EN EL TELÉFONO ---
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('auth_token', token);
-        // ----------------------------------------
+        
+        // ====================================================================
+        // 🕵️‍♂️ NUEVO: GUARDAR ID DEL USUARIO DE FORMA DEFENSIVA Y FLEXIBLE
+        // ====================================================================
+        if (responseData['usuario'] != null) {
+          final uId = responseData['usuario']['id'] ?? responseData['usuario']['_id'];
+          if (uId != null) {
+            await prefs.setString('usuario_id', uId.toString());
+          }
+        } else if (responseData['usuario_id'] != null) {
+          await prefs.setString('usuario_id', responseData['usuario_id'].toString());
+        }
+        // ====================================================================
 
-        print("Login exitoso. Token guardado en el dispositivo.");
+        print("Login exitoso. Token y Usuario ID guardados en el dispositivo.");
         return token; 
-      } else {
-        print("Error: Credenciales incorrectas");
-        return null;
       }
     } catch (e) {
       print("Error de red: $e");

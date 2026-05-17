@@ -9,9 +9,12 @@ import '../models/familia_macroinvertebrado.dart';
 import '../../ia_scanner/screens/scanner_screen.dart'; // Ruta del scanner
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import '../../../core/constants/api_constants.dart';
 
 class Protocolo5Screen extends StatefulWidget {
-  final String biomonitoreoId; // <-- NUEVO: RECIBIMOS EL ID DEL PROYECTO
+  final String biomonitoreoId; // <-- RECIBIMOS EL ID DEL PROYECTO
 
   const Protocolo5Screen({super.key, required this.biomonitoreoId});
 
@@ -26,72 +29,146 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
   @override
   void initState() {
     super.initState();
-    // Usamos addPostFrameCallback para usar Provider de forma segura en initState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _cargarBorrador();
     });
   }
 
-  // --- CARGAR DATOS (OFFLINE FIRST) ---
+  // --- CARGAR DATOS (CATÁLOGO DINÁMICO DE MONGODB + OFFLINE BORRADOR) ---
   Future<void> _cargarBorrador() async {
     final localDB = LocalDBService();
-    final cloudService = ProtocoloService();
     final provider = Provider.of<Protocolo5Provider>(context, listen: false);
-    
-    Map<String, dynamic>? data = await localDB.obtenerBorradorLocal(widget.biomonitoreoId, 5);
-    
-    if (data == null) {
-      data = await cloudService.obtenerMiBorrador(widget.biomonitoreoId, 5);
-      if (data != null && data['datos_protocolo_5'] != null) {
-        await localDB.guardarBorradorLocal(
-          biomonitoreoId: widget.biomonitoreoId,
-          protocoloNumero: 5,
-          datosFormulario: data['datos_protocolo_5'], // Nota: Usamos otro campo si así lo definiste en Node
-          sincronizado: 1, 
-        );
+    const String baseUrl = "https://deepbug-backend.onrender.com/api";
+
+    // 1. Descargar el catálogo GLOBAL real de familias desde tu ruta raíz de Mongo
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? prefs.getString('auth_token') ?? '';
+      final urlCatalogo = Uri.parse('$baseUrl/familias');
+      
+      final response = await http.get(urlCatalogo, headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      });
+
+      if (response.statusCode == 200) {
+        List dataCatalogo = jsonDecode(response.body);
+        List<FamiliaMacroinvertebrado> familiasBd = dataCatalogo.map((f) {
+          return FamiliaMacroinvertebrado(
+            id: f['_id']?.toString() ?? f['id']?.toString() ?? '',
+            nombre: f['nombre_familia']?.toString() ?? 'Sin nombre',
+            valor: int.tryParse(f['valor_bmwp']?.toString() ?? f['valor']?.toString() ?? '5') ?? 5,
+            imagenUrl: f['imagen_url']?.toString() ?? '',
+          );
+        }).toList();
+        
+        provider.actualizarCatalogo(familiasBd);
       }
+    } catch (e) {
+      debugPrint("Modo Offline: Trabajando con catálogo en caché local de la app. $e");
     }
 
-    if (data != null) {
-      // Busca en 'datos_formulario' o 'datos_protocolo_5' según tu backend
-      final carritoGuardado = data['datos_formulario']?['carrito'] ?? data['datos_protocolo_5']?['carrito'];
-      if (carritoGuardado != null) {
-        provider.cargarDesdeBorrador(carritoGuardado);
+    // 2. Extraemos el progreso local SQLite usando EXCLUSIVAMENTE el id de este proyecto
+    try {
+      Map<String, dynamic>? data = await localDB.obtenerBorradorLocal(widget.biomonitoreoId, 5);
+      
+      if (data != null && data['datos_formulario'] != null) {
+        final form = data['datos_formulario'];
+        List? fams;
+        
+        if (form['datos_protocolo_5'] != null && form['datos_protocolo_5']['familias_encontradas'] != null) {
+          fams = form['datos_protocolo_5']['familias_encontradas'];
+        }
+
+        if (fams != null) {
+          // Limpiamos el prefijo web del Base64 antes de pasarlo a MemoryImage
+          List<Map<String, dynamic>> famsMapeadas = fams.map((f) {
+            String? fotoLimpia = f['foto_base64']?.toString();
+            if (fotoLimpia != null && fotoLimpia.contains(',')) {
+              fotoLimpia = fotoLimpia.split(',').last;
+            }
+            return {
+              'familia_id': f['familia_id'] ?? f['id_familia'],
+              'nombre_familia': f['nombre_familia'] ?? f['nombre'],
+              'valor_bmwp': f['valor_bmwp'] ?? f['valor'],
+              'cantidad': f['cantidad'] ?? 1,
+              'foto_base64': fotoLimpia,
+              'imagen_url': f['imagen_url']
+            };
+          }).toList();
+          
+          provider.cargarDatosDesdeAlmacenamiento(famsMapeadas);
+        } else {
+          provider.clearSelectedFamilies();
+        }
+      } else {
+        provider.clearSelectedFamilies();
       }
+    } catch (e) {
+      debugPrint("Error al mapear datos del almacenamiento local por proyecto: $e");
+      provider.clearSelectedFamilies();
     }
     
-    if (mounted) setState(() => _isLoadingData = false);
+    if (mounted) {
+      setState(() => _isLoadingData = false);
+    }
   }
 
-  // --- GUARDAR PROTOCOLO (OFFLINE FIRST) ---
+  // --- GUARDAR PROTOCOLO 5 (FORMATO EXACTO PARA LA WEB ORIGINAL) ---
   Future<bool> _guardarProtocolo() async {
     setState(() => _isSubmitting = true);
     final provider = Provider.of<Protocolo5Provider>(context, listen: false);
     
-    Map<String, dynamic> datosCompletos = {
-      "carrito": provider.generarJsonParaGuardar(),
-      "puntaje_bmwp_total": provider.puntajeTotal,
-    }; 
-    
+    Map<String, dynamic> datos_protocolo_5 = {
+      "familias_encontradas": provider.items.map((item) {
+        String? fotoCloudinary;
+        if (item.fotoBase64 != null) {
+          fotoCloudinary = item.fotoBase64!.startsWith('data:image') 
+              ? item.fotoBase64 
+              : 'data:image/jpeg;base64,${item.fotoBase64}';
+        }
+        return {
+          "familia_id": item.familia.id,
+          "nombre_familia": item.familia.nombre,
+          "valor_bmwp": item.familia.valor,
+          "cantidad": item.cantidad,
+          "imagen_url": null, 
+          "foto_base64": fotoCloudinary
+        };
+      }).toList(),
+      "sumatoria_total_bmwp": provider.puntajeTotal,
+    };
+
     final localDB = LocalDBService();
     final cloudService = ProtocoloService();
 
     await localDB.guardarBorradorLocal(
-      biomonitoreoId: widget.biomonitoreoId, protocoloNumero: 5, datosFormulario: datosCompletos, sincronizado: 0, 
+      biomonitoreoId: widget.biomonitoreoId,
+      protocoloNumero: 5,
+      datosFormulario: { "datos_protocolo_5": datos_protocolo_5 },
+      sincronizado: 0, 
     );
 
-    final exitoNube = await cloudService.sincronizarProtocolo(widget.biomonitoreoId, 5, datosCompletos);
+    final exitoNube = await cloudService.sincronizarProtocolo(
+      widget.biomonitoreoId, 
+      5, 
+      null, 
+      datosProtocolo5: datos_protocolo_5
+    );
     setState(() => _isSubmitting = false);
 
     if (exitoNube && mounted) {
       await localDB.guardarBorradorLocal(
-        biomonitoreoId: widget.biomonitoreoId, protocoloNumero: 5, datosFormulario: datosCompletos, sincronizado: 1, 
+        biomonitoreoId: widget.biomonitoreoId,
+        protocoloNumero: 5,
+        datosFormulario: { "datos_protocolo_5": datos_protocolo_5 },
+        sincronizado: 1, 
       );
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Guardado en la nube ☁️'), backgroundColor: Colors.green));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('¡Análisis de IA sincronizado en la nube exitosamente! ☁️'), backgroundColor: Colors.green));
       return true;
     } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Guardado localmente 📱'), backgroundColor: Colors.blueGrey));
-      return true; 
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Guardado localmente en el teléfono (Modo Offline) 📱'), backgroundColor: Colors.blueGrey));
+      return true;
     }
     return false;
   }
@@ -105,8 +182,6 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Protocolo 5', style: TextStyle(fontWeight: FontWeight.bold)), centerTitle: true),
-      
-      // --- NUEVO BOTÓN DE GUARDAR ---
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -121,7 +196,6 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
           ),
         ),
       ),
-
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20.0),
@@ -148,15 +222,12 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
                     ElevatedButton.icon(
                       onPressed: () => _mostrarCarrito(context, provider),
                       icon: const Icon(Icons.shopping_cart_outlined),
-                      label: Text('${provider.items.fold(0, (sum, item) => sum + item.cantidad)}'), // Suma todas las cantidades
+                      label: Text('${provider.items.fold(0, (sum, item) => sum + item.cantidad)}'),
                     ),
                   ],
                 ),
               ),
-
               const SizedBox(height: 16),
-
-              // --- NUEVO: RECORDATORIO DE FOTOS FALTANTES ---
               if (provider.faltanFotos)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -172,30 +243,21 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
                       Expanded(
                         child: Text(
                           'Atención: Tienes familias sin evidencia fotográfica en el carrito.',
-                          style: TextStyle(
-                            color: Colors.orange.shade900,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
+                          style: TextStyle(color: Colors.orange.shade900, fontWeight: FontWeight.bold, fontSize: 13),
                         ),
                       ),
                     ],
                   ),
                 ),
-
               const SizedBox(height: 24),
-
               const Text('¿Cómo deseas agregar las familias?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
               const SizedBox(height: 20),
-
               _buildOpcionCard(
                 titulo: 'Clasificar con IA', subtitulo: 'Usa la cámara para identificar el macroinvertebrado automáticamente.', icono: Icons.document_scanner_outlined,
                 colorFondo: Theme.of(context).colorScheme.primaryContainer, colorTexto: Theme.of(context).colorScheme.onPrimaryContainer, colorIcono: Theme.of(context).colorScheme.primary, borde: false, sombra: true, isDark: isDark,
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ScannerScreen())),
               ),
-
               const SizedBox(height: 16),
-
               _buildOpcionCard(
                 titulo: 'Selección Manual', subtitulo: 'Explora el catálogo de familias y selecciona visualmente el espécimen.', icono: Icons.touch_app_outlined,
                 colorFondo: Theme.of(context).colorScheme.surfaceContainerHighest, colorTexto: Theme.of(context).colorScheme.onSurface, colorIcono: Theme.of(context).colorScheme.primary, borde: true, sombra: false, isDark: isDark,
@@ -236,25 +298,29 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
       ),
     );
   }
-}
+} // <--- LLAVE DE CIERRE CLAVE DE LA CLASE STATE: Aquí terminaba el error
 
-// --- PANTALLA DEL CATÁLOGO ---
+// --- PANTALLA DEL CATÁLOGO MANUAl (CONECTADA DIRECTO A MONGODB) ---
 class CatalogoManualScreen extends StatelessWidget {
   const CatalogoManualScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<Protocolo5Provider>(context);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Catálogo de Familias', style: TextStyle(fontWeight: FontWeight.bold)), centerTitle: true),
       body: SafeArea(
-        child: GridView.builder(
-          padding: const EdgeInsets.all(16),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 0.65, crossAxisSpacing: 10, mainAxisSpacing: 10),
-          itemCount: catalogoFamilias.length, 
-          itemBuilder: (context, index) {
-            return _ConstruirTarjetaProducto(familia: catalogoFamilias[index]);
-          },
-        ),
+        child: provider.catalogo.isEmpty
+            ? const Center(child: CircularProgressIndicator())
+            : GridView.builder(
+                padding: const EdgeInsets.all(16),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 0.65, crossAxisSpacing: 10, mainAxisSpacing: 10),
+                itemCount: provider.catalogo.length, 
+                itemBuilder: (context, index) {
+                  return _ConstruirTarjetaProducto(familia: provider.catalogo[index]);
+                },
+              ),
       ),
     );
   }
@@ -267,8 +333,6 @@ class _ConstruirTarjetaProducto extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<Protocolo5Provider>(context);
-    
-    // --- VERIFICAMOS SI YA ESTÁ EN EL CARRITO ---
     final itemEnCarrito = provider.items.where((i) => i.familia.id == familia.id).firstOrNull;
     final int cantidadActual = itemEnCarrito?.cantidad ?? 0;
     final bool estaAgregado = cantidadActual > 0;
@@ -276,7 +340,6 @@ class _ConstruirTarjetaProducto extends StatelessWidget {
     return Card(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        // Le ponemos un borde verde si ya está agregado
         side: BorderSide(color: estaAgregado ? Colors.green : Colors.transparent, width: 2)
       ),
       child: Column(
@@ -296,8 +359,6 @@ class _ConstruirTarjetaProducto extends StatelessWidget {
                 Text(familia.nombre, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
                 Text('Valor: ${familia.valor}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
-                
-                // --- BOTÓN DINÁMICO ---
                 ElevatedButton(
                   onPressed: () {
                     provider.agregarFamilia(familia);
@@ -320,7 +381,8 @@ class _ConstruirTarjetaProducto extends StatelessWidget {
   }
 }
 
-// --- FUNCIÓN DEL CARRITO EMERGENTE CON CANTIDADES Y FOTOS ---
+// --- FUNCIÓN DEL CARRITO EMERGENTE ---
+// --- FUNCIÓN DEL CARRITO EMERGENTE CON CANTIDADES CORREGIDAS ---
 void _mostrarCarrito(BuildContext context, Protocolo5Provider provider) {
   showModalBottomSheet(
     context: context,
@@ -330,7 +392,7 @@ void _mostrarCarrito(BuildContext context, Protocolo5Provider provider) {
       return Padding(
         padding: const EdgeInsets.all(16.0),
         child: SizedBox(
-          height: MediaQuery.of(context).size.height * 0.7, // Un poquito más alto
+          height: MediaQuery.of(context).size.height * 0.7,
           child: Column(
             children: [
               const Text('Familias Seleccionadas', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
@@ -352,22 +414,26 @@ void _mostrarCarrito(BuildContext context, Protocolo5Provider provider) {
                           child: ListTile(
                             leading: CircleAvatar(
                               backgroundColor: faltaFoto ? Colors.red.withOpacity(0.2) : Colors.green.withOpacity(0.2),
-                              // Si hay foto, mostramos una miniatura, si no, el contador
                               backgroundImage: !faltaFoto ? MemoryImage(base64Decode(item.fotoBase64!)) : null,
-                              child: faltaFoto ? Text('${item.cantidad}x', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)) : null,
+                              child: faltaFoto ? const Icon(Icons.bug_report, color: Colors.red) : null,
                             ),
-                            title: Text(item.familia.nombre, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            // CORRECCIÓN VISUAL: Mostramos la cantidad directamente al lado del nombre
+                            title: Text('${item.familia.nombre} (x${item.cantidad})', style: const TextStyle(fontWeight: FontWeight.bold)),
                             subtitle: Text(faltaFoto ? 'Falta Evidencia' : 'Evidencia capturada', style: TextStyle(color: faltaFoto ? Colors.red : Colors.green, fontSize: 12)),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                // --- BOTÓN ACTUALIZADO PARA SELECCIONAR FUENTE ---
                                 IconButton(
                                   icon: Icon(faltaFoto ? Icons.add_a_photo : Icons.published_with_changes, color: faltaFoto ? Colors.red : Colors.blue),
                                   onPressed: () => _seleccionarFuenteCarrito(context, prov, item.familia.id),
                                 ),
+                                // NUEVO BOTÓN: Para incrementar cantidad directo desde el carrito
                                 IconButton(
-                                  icon: const Icon(Icons.remove_circle_outline),
+                                  icon: const Icon(Icons.add_circle_outline, color: Colors.green),
+                                  onPressed: () => prov.agregarFamilia(item.familia),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
                                   onPressed: () => prov.reducirCantidad(item.familia.id),
                                 ),
                               ],
@@ -387,7 +453,7 @@ void _mostrarCarrito(BuildContext context, Protocolo5Provider provider) {
   );
 }
 
-// --- NUEVA FUNCIÓN AUXILIAR PARA EL CARRITO ---
+// --- SELECCIONAR FUENTE CON COMPRESIÓN RESPONSIVA EN RED ---
 void _seleccionarFuenteCarrito(BuildContext context, Protocolo5Provider prov, String familiaId) {
   showModalBottomSheet(
     context: context,
@@ -399,9 +465,10 @@ void _seleccionarFuenteCarrito(BuildContext context, Protocolo5Provider prov, St
             leading: const Icon(Icons.camera_alt_outlined),
             title: const Text('Cámara'),
             onTap: () async {
-              Navigator.pop(context); // Cierra el modal de selección
+              Navigator.pop(context);
               final ImagePicker picker = ImagePicker();
-              final XFile? foto = await picker.pickImage(source: ImageSource.camera, imageQuality: 50);
+              // CORRECCIÓN RED: maxWidth y maxHeight reducen el String Base64 para que el backend lo acepte
+              final XFile? foto = await picker.pickImage(source: ImageSource.camera, imageQuality: 50, maxWidth: 800, maxHeight: 800);
               if (foto != null) {
                 final bytes = await foto.readAsBytes();
                 prov.actualizarFoto(familiaId, base64Encode(bytes));
@@ -412,9 +479,9 @@ void _seleccionarFuenteCarrito(BuildContext context, Protocolo5Provider prov, St
             leading: const Icon(Icons.photo_library_outlined),
             title: const Text('Galería'),
             onTap: () async {
-              Navigator.pop(context); // Cierra el modal de selección
+              Navigator.pop(context);
               final ImagePicker picker = ImagePicker();
-              final XFile? foto = await picker.pickImage(source: ImageSource.gallery, imageQuality: 50);
+              final XFile? foto = await picker.pickImage(source: ImageSource.gallery, imageQuality: 50, maxWidth: 800, maxHeight: 800);
               if (foto != null) {
                 final bytes = await foto.readAsBytes();
                 prov.actualizarFoto(familiaId, base64Encode(bytes));

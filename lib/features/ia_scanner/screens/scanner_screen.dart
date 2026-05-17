@@ -58,7 +58,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
     final ImagePicker picker = ImagePicker();
     final XFile? foto = await picker.pickImage(
       source: fuente,
-      imageQuality: 50, // Comprimimos al 50% para que SQLite y Cloudinary no sufran
+      imageQuality: 50, // Comprimimos al 50% para proteger el almacenamiento local y la nube
     );
 
     if (foto != null) {
@@ -214,10 +214,12 @@ class _ScannerScreenState extends State<ScannerScreen> {
     );
   }
 
-  // --- MODIFICADO: Lee la foto y la pasa como Base64 ---
+  // --- CORREGIDO: Busca el espécimen directamente en el catálogo dinámico de la BD ---
   Future<void> _agregarDesdeIA(BuildContext context, String nombreBuscado) async {
     final provider = Provider.of<Protocolo5Provider>(context, listen: false);
-    final match = catalogoFamilias.where((f) => f.nombre.toLowerCase() == nombreBuscado.toLowerCase()).firstOrNull;
+    
+    // CAMBIO CLAVE: Compara el resultado de la CNN contra el catálogo vivo descargado de Mongo
+    final match = provider.catalogo.where((f) => f.nombre.toLowerCase() == nombreBuscado.toLowerCase()).firstOrNull;
 
     if (match != null) {
       String? base64String;
@@ -234,7 +236,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
         Navigator.pop(context); 
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('La familia $nombreBuscado no está en el catálogo actual.'), backgroundColor: Colors.orange));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('La familia $nombreBuscado no está habilitada en el catálogo de la BD.'), backgroundColor: Colors.orange));
     }
   }
 }

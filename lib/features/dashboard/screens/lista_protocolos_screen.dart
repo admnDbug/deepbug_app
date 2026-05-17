@@ -1,6 +1,7 @@
 // Archivo: lib/features/dashboard/screens/lista_protocolos_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // <--- VITAL para el Clipboard
 import '../../protocolo1/screens/protocolo1_screen.dart';
 import '../../protocolo2/screens/protocolo2_screen.dart';
 import '../../protocolo3/screens/protocolo3_screen.dart';
@@ -32,21 +33,16 @@ class ListaProtocolosScreen extends StatefulWidget {
 
 class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
   late int _estadoP1;
-
-  // Empezamos con una lista vacía, se llenará con los datos reales
   List<Map<String, dynamic>> _colaboradores = [];
-
   String _miRolEnEsteProyecto = 'Colaborador';
 
   @override
   void initState() {
     super.initState();
     _estadoP1 = widget.estadoProtocolo1;
-    // Llamamos a cargar el estado y el equipo real en cuanto entramos a la pantalla
     _recargarEstadoProyecto();
   }
 
-  // --- FUNCIÓN AUXILIAR PARA GENERAR INICIALES ---
   String _obtenerIniciales(String nombre) {
     if (nombre.trim().isEmpty) return '--';
     List<String> partes = nombre.trim().split(' ');
@@ -56,20 +52,16 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
     return partes[0][0].toUpperCase();
   }
 
-  // --- CARGAR DATOS (ONLINE U OFFLINE) ---
-  // --- CARGAR DATOS (ONLINE U OFFLINE) ---
   Future<void> _recargarEstadoProyecto() async {
     final bioService = BiomonitoreoService();
     List<dynamic>? datosBackend = await bioService.obtenerBiomonitoreos();
     final prefs = await SharedPreferences.getInstance();
 
-    // Si no hay internet, buscamos la caja fuerte local del Dashboard
     if (datosBackend == null) {
       final cache = prefs.getString('proyectos_cache');
       if (cache != null) datosBackend = jsonDecode(cache);
     }
 
-    // Obtenemos nuestro propio ID del perfil guardado
     String miId = '';
     final perfilCache = prefs.getString('perfil_cache');
     if (perfilCache != null) {
@@ -87,9 +79,8 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
 
       if (proyectoActualizado != null && mounted) {
         List<Map<String, dynamic>> equipoDinamico = [];
-        bool soyResponsableDeEsteProyecto = false; // Bandera para descubrir nuestro rol
+        bool soyResponsableDeEsteProyecto = false;
 
-        // 1. Extraemos a los responsables de forma segura
         for (var resp in (proyectoActualizado['responsable_id'] ?? [])) {
           String idResp = '';
           if (resp is Map) {
@@ -109,13 +100,11 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
               'iniciales': '--',
             });
           }
-          // Si el ID de este responsable coincide con el mío, soy el dueño
           if (idResp == miId) {
             soyResponsableDeEsteProyecto = true;
           }
         }
 
-        // 2. Extraemos a los colaboradores de forma segura
         for (var colab in (proyectoActualizado['colaboradores_id'] ?? [])) {
           if (colab is Map) {
             equipoDinamico.add({
@@ -136,7 +125,6 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
 
         setState(() {
           _colaboradores = equipoDinamico;
-          // Asignamos nuestro rol real en este proyecto
           _miRolEnEsteProyecto = soyResponsableDeEsteProyecto ? 'Responsable' : 'Colaborador';
 
           if (proyectoActualizado['estado_protocolos'] != null &&
@@ -150,8 +138,7 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    bool protocolosBloqueados = _estadoP1 == 0;
-
+    // CAMBIO CLAVE: Los candados de bloqueo lógicos se eliminan. Todos los protocolos quedan activos.
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -181,15 +168,16 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
               icono: Icons.business_center_outlined,
               activo: true,
               onTap: () async {
-                // ESPERAMOS a que el usuario termine el protocolo
+                // Pasamos el nombre del proyecto para que se pueda autollenar si es virgen
                 await Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) =>
-                        Protocolo1Screen(biomonitoreoId: widget.biomonitoreoId),
+                    builder: (context) => Protocolo1Screen(
+                      biomonitoreoId: widget.biomonitoreoId,
+                      nombreProyectoInicial: widget.nombreProyecto,
+                    ),
                   ),
                 );
-                // MAGIA: Recargamos todo al regresar para pintar los candados de inmediato
                 await _recargarEstadoProyecto();
               },
             ),
@@ -197,7 +185,7 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
               titulo: 'Protocolo 2',
               subtitulo: 'Evaluación Visual del Hábitat',
               icono: Icons.map_outlined,
-              activo: !protocolosBloqueados,
+              activo: true, // Siempre abierto
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -209,7 +197,7 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
               titulo: 'Protocolo 3',
               subtitulo: 'Caracterización del Hábitat',
               icono: Icons.nature_outlined,
-              activo: !protocolosBloqueados,
+              activo: true, // Siempre abierto
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -221,7 +209,7 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
               titulo: 'Protocolo 4',
               subtitulo: 'Muestreo Multihábitat',
               icono: Icons.pets_outlined,
-              activo: !protocolosBloqueados,
+              activo: true, // Siempre abierto
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -233,7 +221,7 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
               titulo: 'Protocolo 5',
               subtitulo: 'Identificación IA (CNN)',
               icono: Icons.document_scanner_outlined,
-              activo: !protocolosBloqueados,
+              activo: true, // Siempre abierto
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -241,11 +229,11 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
                 ),
               ),
             ),
-          ], // <-- Cierra el arreglo de children [ ]
-        ), // <-- Cierra el ListView ( )
-      ), // <-- Cierra el RefreshIndicator ( )
-    ); // <-- Cierra el Scaffold ( );
-  } // <-- Cierra el método build { }
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildTarjetaEquipo(BuildContext context) {
     return Card(
@@ -258,41 +246,22 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
             color: Theme.of(context).colorScheme.primaryContainer,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(
-            Icons.group_outlined,
-            color: Theme.of(context).colorScheme.onPrimaryContainer,
-          ),
+          child: Icon(Icons.group_outlined, color: Theme.of(context).colorScheme.onPrimaryContainer),
         ),
-        title: const Text(
-          'Equipo y Accesos',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        subtitle: Text(
-          'Gestiona los colaboradores',
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-        trailing: const Icon(
-          Icons.arrow_forward_ios,
-          size: 16,
-          color: Colors.grey,
-        ),
+        title: const Text('Equipo y Accesos', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        subtitle: Text('Gestiona los colaboradores', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
         onTap: () => _mostrarModalEquipo(context),
       ),
     );
   }
 
-  // --- MODAL DE EQUIPO CON STATEFUL BUILDER ---
   void _mostrarModalEquipo(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) {
-        // StatefulBuilder nos permite actualizar la UI solo dentro de este Modal
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
             return Padding(
@@ -304,17 +273,8 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Equipo del Proyecto',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
-                      ),
+                      const Text('Equipo del Proyecto', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -322,19 +282,13 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
                   if (_miRolEnEsteProyecto == 'Responsable') ...[
                     Text(
                       'CÓDIGO DE INVITACIÓN',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurfaceVariant),
                     ),
                     const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainerHighest,
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -342,25 +296,18 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
                         children: [
                           Text(
                             widget.codigoProyecto,
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 2,
-                            ),
+                            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 2),
                           ),
+                          // CAMBIO CLAVE: Se implementa la copia física al portapapeles nativo
                           IconButton(
-                            icon: Icon(
-                              Icons.copy,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Código copiado al portapapeles',
-                                  ),
-                                ),
-                              );
+                            icon: Icon(Icons.copy, color: Theme.of(context).colorScheme.primary),
+                            onPressed: () async {
+                              await Clipboard.setData(ClipboardData(text: widget.codigoProyecto));
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('¡Código copiado al portapapeles! 📋'), backgroundColor: Colors.green),
+                                );
+                              }
                             },
                           ),
                         ],
@@ -371,15 +318,10 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
 
                   Text(
                     'COLABORADORES (${_colaboradores.length})',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                   const SizedBox(height: 8),
 
-                  // Iteramos sobre la lista dinámica
                   ..._colaboradores.map((colab) {
                     bool esResponsable = colab['rol'] == 'Responsable';
                     return _buildColaboradorTile(
@@ -388,17 +330,11 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
                       colab['rol'],
                       colab['iniciales'],
                       esResponsable,
-                      // Lógica: Solo el Responsable puede eliminar, y no puede eliminarse a sí mismo
                       (_miRolEnEsteProyecto == 'Responsable' && !esResponsable)
-                          ? () => _confirmarEliminacion(
-                              context,
-                              colab,
-                              setModalState,
-                            )
+                          ? () => _confirmarEliminacion(context, colab, setModalState)
                           : null,
                     );
                   }),
-
                   const SizedBox(height: 16),
                 ],
               ),
@@ -409,110 +345,46 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
     );
   }
 
-  // Se añadió el parámetro 'onEliminar'
-  Widget _buildColaboradorTile(
-    BuildContext context,
-    String nombre,
-    String rol,
-    String iniciales,
-    bool esResponsable,
-    VoidCallback? onEliminar,
-  ) {
+  Widget _buildColaboradorTile(BuildContext context, String nombre, String rol, String iniciales, bool esResponsable, VoidCallback? onEliminar) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: CircleAvatar(
-        backgroundColor: esResponsable
-            ? Theme.of(context).colorScheme.primary
-            : Theme.of(context).colorScheme.surfaceContainerHighest,
-        child: Text(
-          iniciales,
-          style: TextStyle(
-            color: esResponsable
-                ? Theme.of(context).colorScheme.onPrimary
-                : Theme.of(context).colorScheme.onSurface,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        backgroundColor: esResponsable ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surfaceContainerHighest,
+        child: Text(iniciales, style: TextStyle(color: esResponsable ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold)),
       ),
       title: Text(nombre, style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text(
-        rol,
-        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-      ),
-      // Mostramos el ícono de basura si tenemos permiso de eliminar
+      subtitle: Text(rol, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
       trailing: onEliminar != null
-          ? IconButton(
-              icon: const Icon(Icons.person_remove_outlined, color: Colors.red),
-              onPressed: onEliminar,
-            )
+          ? IconButton(icon: const Icon(Icons.person_remove_outlined, color: Colors.red), onPressed: onEliminar)
           : null,
     );
   }
 
-  // --- FUNCIÓN DE CONFIRMACIÓN DE ELIMINACIÓN ---
-  void _confirmarEliminacion(
-    BuildContext context,
-    Map<String, dynamic> colaborador,
-    StateSetter setModalState,
-  ) {
+  void _confirmarEliminacion(BuildContext context, Map<String, dynamic> colaborador, StateSetter setModalState) {
     showDialog(
       context: context,
       builder: (contextDialog) => AlertDialog(
         title: const Text('Eliminar colaborador'),
-        content: Text(
-          '¿Estás seguro de que deseas eliminar a ${colaborador['nombre']} de este proyecto? Ya no podrá ver ni editar los formularios.',
-        ),
+        content: Text('¿Estás seguro de que deseas eliminar a ${colaborador['nombre']} de este proyecto? Ya no podrá ver ni editar los formularios.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(contextDialog),
-            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
-          ),
+          TextButton(onPressed: () => Navigator.pop(contextDialog), child: const Text('Cancelar', style: TextStyle(color: Colors.grey))),
           TextButton(
             onPressed: () async {
-              // 1. Cerramos el diálogo de confirmación para que no estorbe
               Navigator.pop(contextDialog);
-
-              // 2. Llamamos a Node.js
               final service = BiomonitoreoService();
-              final exito = await service.removerColaborador(
-                widget.biomonitoreoId,
-                colaborador['id'],
-              );
+              final exito = await service.removerColaborador(widget.biomonitoreoId, colaborador['id']);
 
               if (exito) {
-                // 3. Lo quitamos visualmente del Modal
-                setModalState(() {
-                  _colaboradores.remove(colaborador);
-                });
-
-                // 4. Refrescamos todo por detrás para que el Dashboard también se entere
+                setModalState(() { _colaboradores.remove(colaborador); });
                 _recargarEstadoProyecto();
-
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        '${colaborador['nombre']} ha sido eliminado del proyecto.',
-                      ),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-              } else {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Error al eliminar. Verifica tu conexión.'),
-                      backgroundColor: Colors.red,
-                    ),
+                    SnackBar(content: Text('${colaborador['nombre']} ha sido eliminado.'), backgroundColor: Colors.green),
                   );
                 }
               }
             },
-            child: const Text(
-              'Eliminar',
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-            ),
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -521,7 +393,8 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
 
   Widget _buildBannerAdvertencia() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
+    
+    // Conservamos ÚNICAMENTE la advertencia crítica roja (Planificación incompleta)
     if (_estadoP1 == 0) {
       return Container(
         padding: const EdgeInsets.all(12),
@@ -529,9 +402,7 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
         decoration: BoxDecoration(
           color: isDark ? Colors.red.withOpacity(0.1) : Colors.red.shade50,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isDark ? Colors.red.shade800 : Colors.red.shade200,
-          ),
+          border: Border.all(color: isDark ? Colors.red.shade800 : Colors.red.shade200),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -540,101 +411,36 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
             const SizedBox(width: 12),
             const Expanded(
               child: Text(
-                'Protocolo 1 sin llenar. Debes planificar el monitoreo con conexión a Internet para desbloquear los demás formularios.',
+                'Planificación incompleta en este dispositivo. Puedes abrir el Protocolo 1 para cargar los datos base del proyecto.',
                 style: TextStyle(fontSize: 13, height: 1.4),
               ),
             ),
           ],
         ),
       );
-    } else {
-      return Container(
-        padding: const EdgeInsets.all(12),
-        margin: const EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          color: isDark
-              ? Colors.orange.withOpacity(0.1)
-              : Colors.orange.shade50,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isDark ? Colors.orange.shade800 : Colors.orange.shade200,
-          ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.location_on_outlined, color: Colors.orange.shade700),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                'Faltan los Datos In Situ. Abre el Protocolo 1 para registrarlos.',
-                style: TextStyle(fontSize: 13, height: 1.4),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+    } 
+    
+    // Si el estado es 1 (In Situ naranja) o 2 (Completado), ocultamos el banner por completo
+    return const SizedBox.shrink();
   }
 
-  Widget _buildProtocoloTile({
-    required String titulo,
-    required String subtitulo,
-    required IconData icono,
-    required bool activo,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildProtocoloTile({required String titulo, required String subtitulo, required IconData icono, required bool activo, required VoidCallback onTap}) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      color: activo
-          ? null
-          : Theme.of(context).colorScheme.surfaceContainerHighest,
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: activo
-                ? Theme.of(context).colorScheme.primary.withOpacity(0.2)
-                : Theme.of(context).colorScheme.surfaceContainerHighest,
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(
-            icono,
-            color: activo ? Theme.of(context).colorScheme.primary : Colors.grey,
-          ),
+          child: Icon(icono, color: Theme.of(context).colorScheme.primary),
         ),
-        title: Text(
-          titulo,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-            color: activo ? null : Colors.grey,
-          ),
-        ),
-        subtitle: Text(
-          subtitulo,
-          style: TextStyle(
-            color: activo
-                ? Theme.of(context).colorScheme.onSurfaceVariant
-                : Colors.grey,
-          ),
-        ),
-        trailing: Icon(
-          activo ? Icons.arrow_forward_ios : Icons.lock_outline,
-          size: 16,
-          color: Colors.grey,
-        ),
-        onTap: () {
-          if (activo)
-            onTap();
-          else
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Comienza por el Protocolo 1 para desbloquear.'),
-              ),
-            );
-        },
+        title: Text(titulo, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        subtitle: Text(subtitulo, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+        onTap: onTap, // Al remover los candados lógicos, ejecuta directo la función de navegación
       ),
     );
   }

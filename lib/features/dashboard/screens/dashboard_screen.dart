@@ -142,6 +142,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // --- SINCRONIZAR TODO (INTEGRACIÓN INTELIGENTE PARA PROTOCOLO 5) ---
   Future<void> _sincronizarTodo() async {
     setState(() => _isSyncing = true);
     
@@ -150,23 +151,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
     int exitos = 0;
 
     for (var item in _listaPendientes) {
-       bool ok = await cloudService.sincronizarProtocolo(
-         item['biomonitoreo_id'],
-         item['protocolo_numero'],
-         item['datos_formulario'],
-       );
+      final int numProtocolo = item['protocolo_numero'] ?? 1;
+      final Map<String, dynamic> datosForm = item['datos_formulario'] ?? {};
+      bool ok = false;
 
-       if (ok) {
-         await localDB.guardarBorradorLocal(
-           biomonitoreoId: item['biomonitoreo_id'],
-           protocoloNumero: item['protocolo_numero'],
-           datosFormulario: item['datos_formulario'],
-           sincronizado: 1, 
-         );
-         exitos++;
-       }
+      // 🕵️‍♂️ CONDICIONAL MAESTRA: Si el pendiente es el "Jefe Final" (Protocolo 5)
+      if (numProtocolo == 5) {
+        Map<String, dynamic>? datosP5;
+        
+        // Extraemos de forma segura la estructura interna que espera tu Node.js
+        if (datosForm.containsKey('datos_protocolo_5')) {
+          datosP5 = datosForm['datos_protocolo_5'];
+        }
+
+        // Realizamos el disparo usando el contrato oficial de tu Web original
+        ok = await cloudService.sincronizarProtocolo(
+          item['biomonitoreo_id'],
+          numProtocolo,
+          null, // datos_formulario va nulo explícitamente para el 5
+          datosProtocolo5: datosP5,
+        );
+      } else {
+        // Protocolos del 1 al 4 se sincronizan de forma tradicional
+        ok = await cloudService.sincronizarProtocolo(
+          item['biomonitoreo_id'],
+          numProtocolo,
+          datosForm,
+        );
+      }
+
+      // Si el servidor dio luz verde, actualizamos SQLite localmente para este usuario
+      if (ok) {
+        await localDB.guardarBorradorLocal(
+          biomonitoreoId: item['biomonitoreo_id'],
+          protocoloNumero: numProtocolo,
+          datosFormulario: datosForm,
+          sincronizado: 1, // <--- Ahora sí pasará a estar limpio
+        );
+        exitos++;
+      }
     }
 
+    // Refrescamos contadores y la lista de proyectos en pantalla
     await _revisarPendientesLocales();
     await _cargarBiomonitoreos();
     setState(() => _isSyncing = false);
@@ -174,8 +200,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('☁️ Sincronizados $exitos de ${_listaPendientes.length} protocolos.'),
-          backgroundColor: exitos > 0 ? Colors.green : Colors.red,
+          content: Text('☁️ Sincronizados $exitos de ${_listaPendientes.length} protocolos con éxito.'),
+          backgroundColor: exitos == _listaPendientes.length ? Colors.green : Colors.orange,
         ),
       );
     }
@@ -441,14 +467,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (estadoP1 < 2)
+            // CAMBIO: Evaluamos estrictamente el estado 0 (Rojo). El naranja (1) se descarta.
+            if (estadoP1 == 0) ...[
               Icon(
                 Icons.warning_amber_rounded,
-                color: estadoP1 == 0
-                    ? Colors.red.shade700
-                    : Colors.orange.shade700,
+                color: Colors.red.shade700,
               ),
-            if (estadoP1 < 2) const SizedBox(width: 12),
+              const SizedBox(width: 12),
+            ],
             const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
           ],
         ),
