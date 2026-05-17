@@ -3,9 +3,73 @@
 import 'package:flutter/material.dart';
 import '../../dashboard/screens/dashboard_screen.dart';
 import 'registro_screen.dart';
+import '../services/auth_service.dart'; // <-- Importamos tu servicio de autenticación
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget { // <-- Cambiamos a StatefulWidget
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  // 1. Controladores para extraer el texto que el usuario escribe
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  
+  // 2. Variable para mostrar un indicador de carga
+  bool _isLoading = false;
+
+  // 3. La función maestra que habla con el Backend
+  void _iniciarSesion() async {
+    // Escondemos el teclado
+    FocusScope.of(context).unfocus();
+
+    setState(() {
+      _isLoading = true; // Prendemos la animación de carga
+    });
+
+    // Llamamos a tu servicio
+    final authService = AuthService();
+    final token = await authService.login(
+      _emailController.text.trim(),
+      _passwordController.text.trim(),
+    );
+
+    setState(() {
+      _isLoading = false; // Apagamos la animación de carga
+    });
+
+    if (token != null) {
+      // ¡Éxito! El backend nos dio el gafete VIP. Pasamos al Dashboard.
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const DashboardScreen(),
+          ),
+        );
+      }
+    } else {
+      // Error: La contraseña o el correo estaban mal
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Credenciales incorrectas o error de servidor'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Siempre debemos limpiar los controladores al cerrar la pantalla
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +85,6 @@ class LoginScreen extends StatelessWidget {
             children: [
               const SizedBox(height: 40),
               
-              // --- LOGO DINÁMICO ---
               Center(
                 child: Image.asset(
                   esModoOscuro ? 'assets/images/Deepbug_dark.png' : 'assets/images/Deepbug_light1.png',
@@ -39,8 +102,10 @@ class LoginScreen extends StatelessWidget {
               ),
               const SizedBox(height: 40),
               
-              // --- FORMULARIO ---
+              // --- CAJAS DE TEXTO CON CONTROLADORES ---
               TextField(
+                controller: _emailController, // <-- Le conectamos el controlador
+                keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   labelText: 'Correo electrónico',
                   filled: true,
@@ -51,6 +116,7 @@ class LoginScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               TextField(
+                controller: _passwordController, // <-- Le conectamos el controlador
                 obscureText: true,
                 decoration: InputDecoration(
                   labelText: 'Contraseña',
@@ -62,21 +128,20 @@ class LoginScreen extends StatelessWidget {
               ),
               const SizedBox(height: 40),
               
-              // --- BOTONES ---
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const DashboardScreen(),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+              // --- BOTÓN CON ANIMACIÓN DE CARGA ---
+              SizedBox(
+                height: 50, // Fijamos la altura para que no brinque al cargar
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _iniciarSesion, // Si está cargando, bloqueamos el botón
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: _isLoading 
+                      ? const CircularProgressIndicator() // Muestra la ruedita
+                      : const Text('Entrar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
-                child: const Text('Entrar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
+              
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,

@@ -1,6 +1,7 @@
 // Archivo: lib/features/dashboard/screens/unirse_proyecto_screen.dart
 
 import 'package:flutter/material.dart';
+import '../services/biomonitoreo_service.dart';
 
 class UnirseProyectoScreen extends StatefulWidget {
   const UnirseProyectoScreen({super.key});
@@ -14,13 +15,13 @@ class _UnirseProyectoScreenState extends State<UnirseProyectoScreen> {
   final TextEditingController _codigoController = TextEditingController();
   bool _estaCargando = false;
 
-  // Función que simula la validación del código en el servidor
+  // Función REAL que conecta con el servidor
   Future<void> _validarCodigo() async {
     final codigo = _codigoController.text.trim();
 
     if (codigo.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, ingresa un código válido.')),
+        const SnackBar(content: Text('Por favor, ingresa un código válido.'), backgroundColor: Colors.orange),
       );
       return;
     }
@@ -29,16 +30,25 @@ class _UnirseProyectoScreenState extends State<UnirseProyectoScreen> {
       _estaCargando = true; // Mostramos el círculo de carga
     });
 
-    // Simulamos que la app va a internet a buscar el código (tarda 2 segundos)
-    await Future.delayed(const Duration(seconds: 2));
+    // --- LLAMADA REAL AL BACKEND ---
+    final service = BiomonitoreoService();
+    final resultado = await service.unirseProyecto(codigo);
 
     setState(() {
-      _estaCargando = false;
+      _estaCargando = false; // Detenemos la carga
     });
 
     if (mounted) {
-      // Mostramos el mensaje de éxito
-      _mostrarDialogoExito();
+      if (resultado != null && resultado['exito'] == true) {
+        // ¡Todo salió bien en la base de datos!
+        _mostrarDialogoExito();
+      } else {
+        // Node.js nos rebotó (código inválido, o ya somos miembros)
+        final mensajeError = resultado != null ? resultado['mensaje'] : 'Error de conexión';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(mensajeError), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -94,10 +104,9 @@ class _UnirseProyectoScreenState extends State<UnirseProyectoScreen> {
         centerTitle: true,
       ),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView( 
           padding: const EdgeInsets.all(24.0),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Icon(
