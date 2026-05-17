@@ -34,13 +34,13 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
     });
   }
 
-  // --- CARGAR DATOS (CATÁLOGO DINÁMICO DE MONGODB + OFFLINE BORRADOR) ---
+  // --- CARGAR DATOS CON DESCARGA AUTOMÁTICA DE IMÁGENES COMPRIMIDAS OFFLINE ---
   Future<void> _cargarBorrador() async {
     final localDB = LocalDBService();
     final provider = Provider.of<Protocolo5Provider>(context, listen: false);
     const String baseUrl = "https://deepbug-backend.onrender.com/api";
 
-    // 1. Descargar el catálogo GLOBAL real de familias desde tu ruta raíz de Mongo
+    // MODO ONLINE: Descarga y compresión en segundo plano
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? prefs.getString('auth_token') ?? '';
@@ -53,40 +53,79 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
 
       if (response.statusCode == 200) {
         List dataCatalogo = jsonDecode(response.body);
-        List<FamiliaMacroinvertebrado> familiasBd = dataCatalogo.map((f) {
+        List<Map<String, dynamic>> catalogoModificadoConFotos = [];
+
+        for (var f in dataCatalogo) {
+          Map<String, dynamic> familiaMap = Map<String, dynamic>.from(f);
+          String urlOriginal = f['imagen_url']?.toString() ?? '';
+
+          // 🕵️‍♂️ HACK CLOUDINARY: Si es una URL válida, le pedimos una miniatura ultra-ligera
+          if (urlOriginal.contains('/upload/')) {
+            String urlComprimida = urlOriginal.replaceAll('/upload/', '/upload/w_250,h_250,c_scale,q_50/');
+            try {
+              // Descargamos los pocos kilobytes de la miniatura
+              final resImg = await http.get(Uri.parse(urlComprimida)).timeout(const Duration(seconds: 3));
+              if (resImg.statusCode == 200) {
+                // La guardamos convertida en texto plano dentro del JSON
+                familiaMap['imagen_base64'] = base64Encode(resImg.bodyBytes);
+              }
+            } catch (_) {
+              // Si falla el timeout de la imagen, continúa sin romper el flujo
+            }
+          }
+          catalogoModificadoConFotos.add(familiaMap);
+        }
+
+        // 🔥 RESPALDO OFFLINE COMPLETO: Guardamos el JSON que ya incluye las fotos incrustadas
+        await prefs.setString('catalogo_cache_${widget.biomonitoreoId}', jsonEncode(catalogoModificadoConFotos));
+
+        List<FamiliaMacroinvertebrado> familiasBd = catalogoModificadoConFotos.map((f) {
           return FamiliaMacroinvertebrado(
             id: f['_id']?.toString() ?? f['id']?.toString() ?? '',
             nombre: f['nombre_familia']?.toString() ?? 'Sin nombre',
             valor: int.tryParse(f['valor_bmwp']?.toString() ?? f['valor']?.toString() ?? '5') ?? 5,
             imagenUrl: f['imagen_url']?.toString() ?? '',
+            imagenBase64: f['imagen_base64']?.toString(), // En memoria listo para usarse
           );
         }).toList();
         
         provider.actualizarCatalogo(familiasBd);
       }
     } catch (e) {
-      debugPrint("Modo Offline: Trabajando con catálogo en caché local de la app. $e");
+      debugPrint("Modo Offline: Extrayendo catálogo e imágenes desde SharedPreferences...");
+      
+      final prefs = await SharedPreferences.getInstance();
+      final String? catalogoGuardado = prefs.getString('catalogo_cache_${widget.biomonitoreoId}');
+      
+      if (catalogoGuardado != null) {
+        List dataCatalogo = jsonDecode(catalogoGuardado);
+        List<FamiliaMacroinvertebrado> familiasBd = dataCatalogo.map((f) {
+          return FamiliaMacroinvertebrado(
+            id: f['_id']?.toString() ?? f['id']?.toString() ?? '',
+            nombre: f['nombre_familia']?.toString() ?? 'Sin nombre',
+            valor: int.tryParse(f['valor_bmwp']?.toString() ?? f['valor']?.toString() ?? '5') ?? 5,
+            imagenUrl: f['imagen_url']?.toString() ?? '',
+            imagenBase64: f['imagen_base64']?.toString(), // Recuperado sin internet
+          );
+        }).toList();
+        
+        provider.actualizarCatalogo(familiasBd);
+      }
     }
 
-    // 2. Extraemos el progreso local SQLite usando EXCLUSIVAMENTE el id de este proyecto
+    // 2. Extraemos el progreso local de la muestra (SQLite)
     try {
       Map<String, dynamic>? data = await localDB.obtenerBorradorLocal(widget.biomonitoreoId, 5);
-      
       if (data != null && data['datos_formulario'] != null) {
         final form = data['datos_formulario'];
-        List? fams;
-        
-        if (form['datos_protocolo_5'] != null && form['datos_protocolo_5']['familias_encontradas'] != null) {
-          fams = form['datos_protocolo_5']['familias_encontradas'];
-        }
+        List? fams = form['datos_protocolo_5']?['familias_encontradas'];
 
         if (fams != null) {
-          // Limpiamos el prefijo web del Base64 antes de pasarlo a MemoryImage
           List<Map<String, dynamic>> famsMapeadas = fams.map((f) {
             String? fotoLimpia = f['foto_base64']?.toString();
             if (fotoLimpia != null && fotoLimpia.contains(',')) {
-              fotoLimpia = fotoLimpia.split(',').last;
-            }
+              fotoLimpia = fotoLimpia.split(',').last; // <-- Reemplaza fotoLinter por fotoLimpia
+            }     
             return {
               'familia_id': f['familia_id'] ?? f['id_familia'],
               'nombre_familia': f['nombre_familia'] ?? f['nombre'],
@@ -96,7 +135,6 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
               'imagen_url': f['imagen_url']
             };
           }).toList();
-          
           provider.cargarDatosDesdeAlmacenamiento(famsMapeadas);
         } else {
           provider.clearSelectedFamilies();
@@ -105,13 +143,10 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
         provider.clearSelectedFamilies();
       }
     } catch (e) {
-      debugPrint("Error al mapear datos del almacenamiento local por proyecto: $e");
       provider.clearSelectedFamilies();
     }
     
-    if (mounted) {
-      setState(() => _isLoadingData = false);
-    }
+    if (mounted) setState(() => _isLoadingData = false);
   }
 
   // --- GUARDAR PROTOCOLO 5 (FORMATO EXACTO PARA LA WEB ORIGINAL) ---
@@ -326,6 +361,7 @@ class CatalogoManualScreen extends StatelessWidget {
   }
 }
 
+// --- TARJETA DEL CATÁLOGO ADAPTATIVA (ONLINE / OFFLINE) ---
 class _ConstruirTarjetaProducto extends StatelessWidget {
   final FamiliaMacroinvertebrado familia;
   const _ConstruirTarjetaProducto({required this.familia});
@@ -336,6 +372,9 @@ class _ConstruirTarjetaProducto extends StatelessWidget {
     final itemEnCarrito = provider.items.where((i) => i.familia.id == familia.id).firstOrNull;
     final int cantidadActual = itemEnCarrito?.cantidad ?? 0;
     final bool estaAgregado = cantidadActual > 0;
+
+    // 🕵️‍♂️ Validamos si tenemos la miniatura offline disponible
+    final bool tieneFotoOffline = familia.imagenBase64 != null && familia.imagenBase64!.isNotEmpty;
 
     return Card(
       shape: RoundedRectangleBorder(
@@ -348,7 +387,17 @@ class _ConstruirTarjetaProducto extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Image.network(familia.imagenUrl, fit: BoxFit.contain, errorBuilder: (_, __, ___) => Icon(Icons.bug_report, size: 50, color: Theme.of(context).colorScheme.primary)),
+              child: tieneFotoOffline
+                  ? Image.memory(
+                      base64Decode(familia.imagenBase64!),
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => Icon(Icons.bug_report, size: 50, color: Theme.of(context).colorScheme.primary),
+                    )
+                  : Image.network(
+                      familia.imagenUrl, 
+                      fit: BoxFit.contain, 
+                      errorBuilder: (_, __, ___) => Icon(Icons.bug_report, size: 50, color: Theme.of(context).colorScheme.primary),
+                    ),
             ),
           ),
           Padding(
