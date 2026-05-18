@@ -20,8 +20,9 @@ class Protocolo5Provider extends ChangeNotifier {
   bool get estaVacio => _carrito.isEmpty;
   List<FamiliaMacroinvertebrado> get catalogo => _catalogoDb; // Mapeado para que la UI lo use como catálogo activo
 
-  int get puntajeTotal {
-    int total = 0;
+  // 1. Reemplaza tu puntajeTotal por este (ahora usa double):
+  double get puntajeTotal {
+    double total = 0.0;
     for (var item in _carrito.values) {
       total += item.familia.valor;
     }
@@ -98,7 +99,7 @@ class Protocolo5Provider extends ChangeNotifier {
           orElse: () => FamiliaMacroinvertebrado(
             id: (d['id_familia'] ?? d['familia_id'] ?? nombreBuscado).toString(), 
             nombre: d['nombre'] ?? d['nombre_familia'] ?? 'Familia', 
-            valor: int.tryParse((d['valor'] ?? d['valor_bmwp'] ?? '0').toString()) ?? 0, 
+            valor: double.tryParse((d['valor'] ?? d['valor_bmwp'] ?? '0').toString()) ?? 0.0, 
             imagenUrl: ''
           )
         );

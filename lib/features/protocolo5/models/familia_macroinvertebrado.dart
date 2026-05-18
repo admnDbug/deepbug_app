@@ -3,7 +3,7 @@
 class FamiliaMacroinvertebrado {
   final String id;
   final String nombre;
-  final int valor;
+  final double valor;
   final String imagenUrl;
   final String? imagenBase64; // 👈 LÍNEA AGREGADA
 

@@ -40,50 +40,60 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
     final provider = Provider.of<Protocolo5Provider>(context, listen: false);
     const String baseUrl = "https://deepbug-backend.onrender.com/api";
 
-    // MODO ONLINE: Descarga y compresión en segundo plano
+    // 1. MODO ONLINE: Descarga desde el Proyecto + compresión en segundo plano
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? prefs.getString('auth_token') ?? '';
-      final urlCatalogo = Uri.parse('$baseUrl/familias');
       
-      final response = await http.get(urlCatalogo, headers: {
+      // 🕵️‍♂️ Apuntamos al proyecto para jalar su zona e índice personalizado
+      final urlProyecto = Uri.parse('$baseUrl/biomonitoreos/${widget.biomonitoreoId}');
+      
+      final response = await http.get(urlProyecto, headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       });
 
       if (response.statusCode == 200) {
-        List dataCatalogo = jsonDecode(response.body);
+        final Map<String, dynamic> proyectoData = jsonDecode(response.body);
+        
+        // Extraemos de forma segura el catálogo de familias asociado a la cuenca
+        List dataCatalogo = [];
+        if (proyectoData['zona_id'] != null && proyectoData['zona_id']['catalogo_familias'] != null) {
+          dataCatalogo = proyectoData['zona_id']['catalogo_familias'];
+        }
+
         List<Map<String, dynamic>> catalogoModificadoConFotos = [];
 
         for (var f in dataCatalogo) {
           Map<String, dynamic> familiaMap = Map<String, dynamic>.from(f);
           String urlOriginal = f['imagen_url']?.toString() ?? '';
 
-          // 🕵️‍♂️ HACK CLOUDINARY: Si es una URL válida, le pedimos una miniatura ultra-ligera
+          // 🕵️‍♂️ HACK CLOUDINARY: Si es una URL válida, pedimos miniatura ultra-ligera
           if (urlOriginal.contains('/upload/')) {
             String urlComprimida = urlOriginal.replaceAll('/upload/', '/upload/w_250,h_250,c_scale,q_50/');
             try {
-              // Descargamos los pocos kilobytes de la miniatura
+              // Descargamos los pocos kilobytes
               final resImg = await http.get(Uri.parse(urlComprimida)).timeout(const Duration(seconds: 3));
               if (resImg.statusCode == 200) {
-                // La guardamos convertida en texto plano dentro del JSON
+                // La guardamos convertida en texto plano
                 familiaMap['imagen_base64'] = base64Encode(resImg.bodyBytes);
               }
             } catch (_) {
-              // Si falla el timeout de la imagen, continúa sin romper el flujo
+              // Si falla, continúa sin romper el flujo
             }
           }
           catalogoModificadoConFotos.add(familiaMap);
         }
 
-        // 🔥 RESPALDO OFFLINE COMPLETO: Guardamos el JSON que ya incluye las fotos incrustadas
+        // 🔥 RESPALDO OFFLINE COMPLETO: Guardamos JSON con fotos incrustadas y puntajes reales
         await prefs.setString('catalogo_cache_${widget.biomonitoreoId}', jsonEncode(catalogoModificadoConFotos));
 
         List<FamiliaMacroinvertebrado> familiasBd = catalogoModificadoConFotos.map((f) {
           return FamiliaMacroinvertebrado(
-            id: f['_id']?.toString() ?? f['id']?.toString() ?? '',
+            id: f['_id']?.toString() ?? f['id']?.toString() ?? f['familia_id']?.toString() ?? '',
             nombre: f['nombre_familia']?.toString() ?? 'Sin nombre',
-            valor: int.tryParse(f['valor_bmwp']?.toString() ?? f['valor']?.toString() ?? '5') ?? 5,
+            // 📊 Toma el valor dinámico guardado en la cuenca (fallback a 0.0)
+            valor: double.tryParse(f['valor_bmwp']?.toString() ?? f['valor']?.toString() ?? '0.0') ?? 0.0,
             imagenUrl: f['imagen_url']?.toString() ?? '',
             imagenBase64: f['imagen_base64']?.toString(), // En memoria listo para usarse
           );
@@ -92,7 +102,7 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
         provider.actualizarCatalogo(familiasBd);
       }
     } catch (e) {
-      debugPrint("Modo Offline: Extrayendo catálogo e imágenes desde SharedPreferences...");
+      debugPrint("Modo Offline: Extrayendo catálogo e imágenes de zona desde SharedPreferences...");
       
       final prefs = await SharedPreferences.getInstance();
       final String? catalogoGuardado = prefs.getString('catalogo_cache_${widget.biomonitoreoId}');
@@ -101,9 +111,9 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
         List dataCatalogo = jsonDecode(catalogoGuardado);
         List<FamiliaMacroinvertebrado> familiasBd = dataCatalogo.map((f) {
           return FamiliaMacroinvertebrado(
-            id: f['_id']?.toString() ?? f['id']?.toString() ?? '',
+            id: f['_id']?.toString() ?? f['id']?.toString() ?? f['familia_id']?.toString() ?? '',
             nombre: f['nombre_familia']?.toString() ?? 'Sin nombre',
-            valor: int.tryParse(f['valor_bmwp']?.toString() ?? f['valor']?.toString() ?? '5') ?? 5,
+            valor: double.tryParse(f['valor_bmwp']?.toString() ?? f['valor']?.toString() ?? '0.0') ?? 0.0,
             imagenUrl: f['imagen_url']?.toString() ?? '',
             imagenBase64: f['imagen_base64']?.toString(), // Recuperado sin internet
           );
@@ -124,7 +134,7 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
           List<Map<String, dynamic>> famsMapeadas = fams.map((f) {
             String? fotoLimpia = f['foto_base64']?.toString();
             if (fotoLimpia != null && fotoLimpia.contains(',')) {
-              fotoLimpia = fotoLimpia.split(',').last; // <-- Reemplaza fotoLinter por fotoLimpia
+              fotoLimpia = fotoLimpia.split(',').last;
             }     
             return {
               'familia_id': f['familia_id'] ?? f['id_familia'],
@@ -430,7 +440,6 @@ class _ConstruirTarjetaProducto extends StatelessWidget {
   }
 }
 
-// --- FUNCIÓN DEL CARRITO EMERGENTE ---
 // --- FUNCIÓN DEL CARRITO EMERGENTE CON CANTIDADES CORREGIDAS ---
 void _mostrarCarrito(BuildContext context, Protocolo5Provider provider) {
   showModalBottomSheet(
