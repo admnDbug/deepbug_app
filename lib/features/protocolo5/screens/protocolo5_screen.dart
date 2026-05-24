@@ -218,6 +218,23 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
     return false;
   }
 
+  // --- EVALUACIÓN DE CALIDAD DE AGUA (BMWP-RBTC) ---
+  Map<String, dynamic> _obtenerCalidadAgua(double puntaje) {
+    if (puntaje > 68) {
+      return {'etiqueta': 'Excelente: Aguas no contaminadas', 'color': Colors.blue.shade700};
+    } else if (puntaje > 52) {
+      return {'etiqueta': 'Muy buena: Aguas no alteradas', 'color': Colors.lightBlue};
+    } else if (puntaje > 39) {
+      return {'etiqueta': 'Buena: Mod. contaminadas', 'color': Colors.green};
+    } else if (puntaje > 26) {
+      return {'etiqueta': 'Regular: Aguas contaminadas', 'color': Colors.yellow.shade800}; // shade800 para mejor lectura
+    } else if (puntaje > 13) {
+      return {'etiqueta': 'Mala: Aguas muy contaminadas', 'color': Colors.orange};
+    } else {
+      return {'etiqueta': 'Pésima: Ext. contaminadas', 'color': Colors.red};
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoadingData) return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -257,13 +274,30 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Índice BMWP/Mex', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.bold)),
-                        Text('Puntaje: ${provider.puntajeTotal}', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-                      ],
+                    Expanded(
+                      child: Builder(
+                        builder: (context) {
+                          final calidad = _obtenerCalidadAgua(provider.puntajeTotal);
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Índice BMWP-RBTC', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.bold)),
+                              Text(
+                                'Puntaje: ${provider.puntajeTotal}', 
+                                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: calidad['color'])
+                              ),
+                              Text(
+                                calidad['etiqueta'], 
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: calidad['color']),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 2,
+                              ),
+                            ],
+                          );
+                        }
+                      ),
                     ),
+                    const SizedBox(width: 10),
                     ElevatedButton.icon(
                       onPressed: () => _mostrarCarrito(context, provider),
                       icon: const Icon(Icons.shopping_cart_outlined),
@@ -345,26 +379,74 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
   }
 } // <--- LLAVE DE CIERRE CLAVE DE LA CLASE STATE: Aquí terminaba el error
 
-// --- PANTALLA DEL CATÁLOGO MANUAl (CONECTADA DIRECTO A MONGODB) ---
-class CatalogoManualScreen extends StatelessWidget {
+// --- PANTALLA DEL CATÁLOGO MANUAl (CON BUSCADOR INTEGRADO) ---
+class CatalogoManualScreen extends StatefulWidget {
   const CatalogoManualScreen({super.key});
+
+  @override
+  State<CatalogoManualScreen> createState() => _CatalogoManualScreenState();
+}
+
+class _CatalogoManualScreenState extends State<CatalogoManualScreen> {
+  String _terminoBusqueda = '';
 
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<Protocolo5Provider>(context);
+    
+    // Filtrar el catálogo según lo que el usuario escriba
+    final catalogoFiltrado = provider.catalogo.where((familia) {
+      return familia.nombre.toLowerCase().contains(_terminoBusqueda.toLowerCase());
+    }).toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Catálogo de Familias', style: TextStyle(fontWeight: FontWeight.bold)), centerTitle: true),
       body: SafeArea(
         child: provider.catalogo.isEmpty
             ? const Center(child: CircularProgressIndicator())
-            : GridView.builder(
-                padding: const EdgeInsets.all(16),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 0.65, crossAxisSpacing: 10, mainAxisSpacing: 10),
-                itemCount: provider.catalogo.length, 
-                itemBuilder: (context, index) {
-                  return _ConstruirTarjetaProducto(familia: provider.catalogo[index]);
-                },
+            : Column(
+                children: [
+                  // --- BARRA DE BÚSQUEDA ---
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: TextField(
+                      onChanged: (valor) {
+                        setState(() {
+                          _terminoBusqueda = valor;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Buscar por nombre de familia...',
+                        prefixIcon: const Icon(Icons.search),
+                        filled: true,
+                        fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                      ),
+                    ),
+                  ),
+                  // --- GRILLA DE RESULTADOS ---
+                  Expanded(
+                    child: catalogoFiltrado.isEmpty 
+                      ? const Center(child: Text('No se encontraron familias con ese nombre.'))
+                      : GridView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2, 
+                            childAspectRatio: 0.65, 
+                            crossAxisSpacing: 10, 
+                            mainAxisSpacing: 10
+                          ),
+                          itemCount: catalogoFiltrado.length, 
+                          itemBuilder: (context, index) {
+                            return _ConstruirTarjetaProducto(familia: catalogoFiltrado[index]);
+                          },
+                        ),
+                  ),
+                ],
               ),
       ),
     );

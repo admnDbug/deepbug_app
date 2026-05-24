@@ -45,7 +45,8 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
 
   String _obtenerIniciales(String nombre) {
     if (nombre.trim().isEmpty) return '--';
-    List<String> partes = nombre.trim().split(' ');
+    // Dividimos usando expresión regular para ignorar espacios dobles o múltiples
+    List<String> partes = nombre.trim().split(RegExp(r'\s+'));
     if (partes.length > 1) {
       return '${partes[0][0]}${partes[1][0]}'.toUpperCase();
     }
