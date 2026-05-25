@@ -24,36 +24,45 @@ class LocalDBService {
     String path = join(await getDatabasesPath(), 'deep_bug_local.db');
     return await openDatabase(
       path,
-      version: 1,
+      version: 2, // <-- 1. Subimos la versión de 1 a 2
       onCreate: (db, version) async {
-        await db.execute('''
-          CREATE TABLE protocolos_locales (
-            id TEXT PRIMARY KEY,
-            estacion_id TEXT,
-            protocolo_numero INTEGER,
-            datos_formulario TEXT,
-            sincronizado INTEGER,
-            fecha_guardado TEXT
-          )
-        ''');
+        await _crearTablas(db);
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        // <-- 2. Si detecta una base de datos vieja, la borra y la rehace
+        await db.execute('DROP TABLE IF EXISTS protocolos_locales');
+        await _crearTablas(db);
       },
     );
   }
 
-  // --- GUARDAR O ACTUALIZAR BORRADOR LOCAL ---
+  // Separamos la creación para poder reutilizarla
+  Future<void> _crearTablas(Database db) async {
+    await db.execute('''
+      CREATE TABLE protocolos_locales (
+        id TEXT PRIMARY KEY,
+        estacion_id TEXT,
+        protocolo_numero INTEGER,
+        datos_formulario TEXT,
+        sincronizado INTEGER,
+        fecha_guardado TEXT
+      )
+    ''');
+  }
+
   // --- GUARDAR O ACTUALIZAR BORRADOR LOCAL (AISLADO POR PERFIL) ---
   Future<void> guardarBorradorLocal({
     required String estacionId,
     required int protocoloNumero,
     required Map<String, dynamic> datosFormulario,
-    required int sincronizado, 
+    required int sincronizado,
   }) async {
     final db = await database;
 
     // 🕵️‍♂️ Extraemos quién tiene la sesión activa actualmente
     final prefs = await SharedPreferences.getInstance();
     final String usuarioId = prefs.getString('usuario_id') ?? 'anonimo';
-    
+
     // Creamos la firma única compuesta para este usuario y este estacion
     final String idAisladoPorPerfil = "${usuarioId}_$estacionId";
 
@@ -90,7 +99,10 @@ class LocalDBService {
   }
 
   // --- OBTENER BORRADOR LOCAL (FILTRADO POR PERFIL ACTIVE) ---
-  Future<Map<String, dynamic>?> obtenerBorradorLocal(String estacionId, int protocoloNumero) async {
+  Future<Map<String, dynamic>?> obtenerBorradorLocal(
+    String estacionId,
+    int protocoloNumero,
+  ) async {
     final db = await database;
 
     // Revisa quién está pidiendo los datos en este milisegundo
@@ -108,7 +120,7 @@ class LocalDBService {
       return {
         ...res.first,
         // IMPORTANTE: Devolvemos el estacionId original limpio a la UI para que la pantalla no note el truco
-        'estacion_id': estacionId, 
+        'estacion_id': estacionId,
         'datos_formulario': jsonDecode(res.first['datos_formulario'] as String),
       };
     }
@@ -118,22 +130,22 @@ class LocalDBService {
   // --- BUSCAR TODOS LOS PENDIENTES DE SINCRONIZAR (CURE CONTRACRASH NODE) ---
   Future<List<Map<String, dynamic>>> obtenerPendientes() async {
     final db = await database;
-    
-    final res = await db.query(
-      'protocolos_locales',
-      where: 'sincronizado = 0',
-    );
+
+    final res = await db.query('protocolos_locales', where: 'sincronizado = 0');
 
     // Re-armamos la lista limpiando y dividiendo la llave compuesta antes de enviarla al servicio de red
     return res.map((row) {
       final String dbId = row['estacion_id'].toString();
-      
+
       // Si la llave local contiene el guión bajo, recortamos la primera mitad y nos quedamos con el ID real de Mongo
-      final String cleanEstacionId = dbId.contains('_') ? dbId.split('_').last : dbId;
+      final String cleanEstacionId = dbId.contains('_')
+          ? dbId.split('_').last
+          : dbId;
 
       return {
         ...row,
-        'estacion_id': cleanEstacionId, // <-- El ID limpio de 24 caracteres viaja feliz a la API
+        'estacion_id':
+            cleanEstacionId, // <-- El ID limpio de 24 caracteres viaja feliz a la API
         'datos_formulario': jsonDecode(row['datos_formulario'] as String),
       };
     }).toList();
