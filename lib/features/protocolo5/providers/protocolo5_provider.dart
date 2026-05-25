@@ -38,7 +38,7 @@ class Protocolo5Provider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- LIMPIEZA EXPLÍCITA (Evita duplicidad/mezcla entre proyectos) ---
+  // --- LIMPIEZA EXPLÍCITA (Evita duplicidad/mezcla entre estaciones) ---
   void clearSelectedFamilies() {
     _carrito.clear();
     notifyListeners();
@@ -85,7 +85,7 @@ class Protocolo5Provider extends ChangeNotifier {
 
   // --- CARGAR DATOS DESDE LOCAL DB (SQLite / Borrador) ---
   void cargarDatosDesdeAlmacenamiento(List<dynamic> datosGuardados) {
-    _carrito.clear(); // Limpieza instantánea para aislar por proyecto
+    _carrito.clear(); // Limpieza instantánea para aislar por estacion
     for (var d in datosGuardados) {
       if (d is Map) {
         // Extraemos el nombre guardado en base de datos

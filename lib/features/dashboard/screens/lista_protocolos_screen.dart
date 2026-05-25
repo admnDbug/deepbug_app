@@ -7,24 +7,24 @@ import '../../protocolo2/screens/protocolo2_screen.dart';
 import '../../protocolo3/screens/protocolo3_screen.dart';
 import '../../protocolo4/screens/protocolo4_screen.dart';
 import '../../protocolo5/screens/protocolo5_screen.dart';
-import '../services/biomonitoreo_service.dart';
+import '../services/estacion_service.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ListaProtocolosScreen extends StatefulWidget {
-  final String biomonitoreoId;
-  final String nombreProyecto;
+  final String estacionId;
+  final String nombreEstacion;
   final int estadoProtocolo1;
   final String rolUsuario;
-  final String codigoProyecto;
+  final String codigoEstacion;
 
   const ListaProtocolosScreen({
     super.key,
-    required this.biomonitoreoId,
-    required this.nombreProyecto,
+    required this.estacionId,
+    required this.nombreEstacion,
     this.estadoProtocolo1 = 0,
     required this.rolUsuario,
-    required this.codigoProyecto,
+    required this.codigoEstacion,
   });
 
   @override
@@ -34,13 +34,13 @@ class ListaProtocolosScreen extends StatefulWidget {
 class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
   late int _estadoP1;
   List<Map<String, dynamic>> _colaboradores = [];
-  String _miRolEnEsteProyecto = 'Colaborador';
+  String _miRolEnEstaEstacion = 'Colaborador';
 
   @override
   void initState() {
     super.initState();
     _estadoP1 = widget.estadoProtocolo1;
-    _recargarEstadoProyecto();
+    _recargarEstadoEstacion();
   }
 
   String _obtenerIniciales(String nombre) {
@@ -53,13 +53,13 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
     return partes[0][0].toUpperCase();
   }
 
-  Future<void> _recargarEstadoProyecto() async {
-    final bioService = BiomonitoreoService();
-    List<dynamic>? datosBackend = await bioService.obtenerBiomonitoreos();
+  Future<void> _recargarEstadoEstacion() async {
+    final bioService = EstacionService();
+    List<dynamic>? datosBackend = await bioService.obtenerEstaciones();
     final prefs = await SharedPreferences.getInstance();
 
     if (datosBackend == null) {
-      final cache = prefs.getString('proyectos_cache');
+      final cache = prefs.getString('estaciones_cache');
       if (cache != null) datosBackend = jsonDecode(cache);
     }
 
@@ -71,18 +71,18 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
     }
 
     if (datosBackend != null) {
-      final proyectoActualizado = datosBackend.firstWhere(
+      final estacionActualizada = datosBackend.firstWhere(
         (p) =>
-            p['_id'].toString() == widget.biomonitoreoId ||
-            p['nombre_proyecto'] == widget.nombreProyecto,
+            p['_id'].toString() == widget.estacionId ||
+            p['nombre_estacion'] == widget.nombreEstacion,
         orElse: () => null,
       );
 
-      if (proyectoActualizado != null && mounted) {
+      if (estacionActualizada != null && mounted) {
         List<Map<String, dynamic>> equipoDinamico = [];
-        bool soyResponsableDeEsteProyecto = false;
+        bool soyResponsableDeEsteEstacion = false;
 
-        for (var resp in (proyectoActualizado['responsable_id'] ?? [])) {
+        for (var resp in (estacionActualizada['responsable_id'] ?? [])) {
           String idResp = '';
           if (resp is Map) {
             idResp = resp['_id'].toString();
@@ -102,11 +102,11 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
             });
           }
           if (idResp == miId) {
-            soyResponsableDeEsteProyecto = true;
+            soyResponsableDeEsteEstacion = true;
           }
         }
 
-        for (var colab in (proyectoActualizado['colaboradores_id'] ?? [])) {
+        for (var colab in (estacionActualizada['colaboradores_id'] ?? [])) {
           if (colab is Map) {
             equipoDinamico.add({
               'id': colab['_id'],
@@ -126,11 +126,11 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
 
         setState(() {
           _colaboradores = equipoDinamico;
-          _miRolEnEsteProyecto = soyResponsableDeEsteProyecto ? 'Responsable' : 'Colaborador';
+          _miRolEnEstaEstacion = soyResponsableDeEsteEstacion ? 'Responsable' : 'Colaborador';
 
-          if (proyectoActualizado['estado_protocolos'] != null &&
-              proyectoActualizado['estado_protocolos']['protocolo1'] != null) {
-            _estadoP1 = proyectoActualizado['estado_protocolos']['protocolo1'];
+          if (estacionActualizada['estado_protocolos'] != null &&
+              estacionActualizada['estado_protocolos']['protocolo1'] != null) {
+            _estadoP1 = estacionActualizada['estado_protocolos']['protocolo1'];
           }
         });
       }
@@ -143,12 +143,12 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.nombreProyecto,
+          widget.nombreEstacion,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
       ),
       body: RefreshIndicator(
-        onRefresh: _recargarEstadoProyecto,
+        onRefresh: _recargarEstadoEstacion,
         color: Theme.of(context).colorScheme.primary,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -169,17 +169,17 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
               icono: Icons.business_center_outlined,
               activo: true,
               onTap: () async {
-                // Pasamos el nombre del proyecto para que se pueda autollenar si es virgen
+                // Pasamos el nombre del estacion para que se pueda autollenar si es virgen
                 await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => Protocolo1Screen(
-                      biomonitoreoId: widget.biomonitoreoId,
-                      nombreProyectoInicial: widget.nombreProyecto,
+                      estacionId: widget.estacionId,
+                      nombreEstacionInicial: widget.nombreEstacion,
                     ),
                   ),
                 );
-                await _recargarEstadoProyecto();
+                await _recargarEstadoEstacion();
               },
             ),
             _buildProtocoloTile(
@@ -190,7 +190,7 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => Protocolo2Screen(biomonitoreoId: widget.biomonitoreoId)
+                  builder: (context) => Protocolo2Screen(estacionId: widget.estacionId)
                 ),
               ),
             ),
@@ -202,7 +202,7 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => Protocolo3Screen(biomonitoreoId: widget.biomonitoreoId),
+                  builder: (context) => Protocolo3Screen(estacionId: widget.estacionId),
                 ),
               ),
             ),
@@ -214,7 +214,7 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => Protocolo4Screen(biomonitoreoId: widget.biomonitoreoId),
+                  builder: (context) => Protocolo4Screen(estacionId: widget.estacionId),
                 ),
               ),
             ),
@@ -226,7 +226,7 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => Protocolo5Screen(biomonitoreoId: widget.biomonitoreoId),
+                  builder: (context) => Protocolo5Screen(estacionId: widget.estacionId),
                 ),
               ),
             ),
@@ -274,13 +274,13 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Equipo del Proyecto', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      const Text('Equipo de la Estación', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                       IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
                     ],
                   ),
                   const SizedBox(height: 16),
 
-                  if (_miRolEnEsteProyecto == 'Responsable') ...[
+                  if (_miRolEnEstaEstacion == 'Responsable') ...[
                     Text(
                       'CÓDIGO DE INVITACIÓN',
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurfaceVariant),
@@ -296,14 +296,14 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            widget.codigoProyecto,
+                            widget.codigoEstacion,
                             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 2),
                           ),
                           // CAMBIO CLAVE: Se implementa la copia física al portapapeles nativo
                           IconButton(
                             icon: Icon(Icons.copy, color: Theme.of(context).colorScheme.primary),
                             onPressed: () async {
-                              await Clipboard.setData(ClipboardData(text: widget.codigoProyecto));
+                              await Clipboard.setData(ClipboardData(text: widget.codigoEstacion));
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(content: Text('¡Código copiado al portapapeles! 📋'), backgroundColor: Colors.green),
@@ -331,7 +331,7 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
                       colab['rol'],
                       colab['iniciales'],
                       esResponsable,
-                      (_miRolEnEsteProyecto == 'Responsable' && !esResponsable)
+                      (_miRolEnEstaEstacion == 'Responsable' && !esResponsable)
                           ? () => _confirmarEliminacion(context, colab, setModalState)
                           : null,
                     );
@@ -366,18 +366,18 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
       context: context,
       builder: (contextDialog) => AlertDialog(
         title: const Text('Eliminar colaborador'),
-        content: Text('¿Estás seguro de que deseas eliminar a ${colaborador['nombre']} de este proyecto? Ya no podrá ver ni editar los formularios.'),
+        content: Text('¿Estás seguro de que deseas eliminar a ${colaborador['nombre']} de esta estación? Ya no podrá ver ni editar los formularios.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(contextDialog), child: const Text('Cancelar', style: TextStyle(color: Colors.grey))),
           TextButton(
             onPressed: () async {
               Navigator.pop(contextDialog);
-              final service = BiomonitoreoService();
-              final exito = await service.removerColaborador(widget.biomonitoreoId, colaborador['id']);
+              final service = EstacionService();
+              final exito = await service.removerColaborador(widget.estacionId, colaborador['id']);
 
               if (exito) {
                 setModalState(() { _colaboradores.remove(colaborador); });
-                _recargarEstadoProyecto();
+                _recargarEstadoEstacion();
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('${colaborador['nombre']} ha sido eliminado.'), backgroundColor: Colors.green),
@@ -412,7 +412,7 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
             const SizedBox(width: 12),
             const Expanded(
               child: Text(
-                'Planificación incompleta en este dispositivo. Puedes abrir el Protocolo 1 para cargar los datos base del proyecto.',
+                'Planificación incompleta en este dispositivo. Puedes abrir el Protocolo 1 para cargar los datos base de la estacion.',
                 style: TextStyle(fontSize: 13, height: 1.4),
               ),
             ),

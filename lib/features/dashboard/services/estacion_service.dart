@@ -1,13 +1,13 @@
-// Archivo: lib/features/dashboard/services/biomonitoreo_service.dart
+// Archivo: lib/features/dashboard/services/estacion_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/api_constants.dart';
 
-class BiomonitoreoService {
+class EstacionService {
   
   // Petición GET para traer el catálogo
-  Future<List<dynamic>?> obtenerBiomonitoreos() async {
+  Future<List<dynamic>?> obtenerEstaciones() async {
     try {
       // 1. Sacamos el Gafete de la bóveda
       final prefs = await SharedPreferences.getInstance();
@@ -19,7 +19,7 @@ class BiomonitoreoService {
       }
 
       // 2. Preparamos la petición
-      final url = Uri.parse('${ApiConstants.baseUrl}/biomonitoreos'); // Ajusta tu endpoint si es diferente
+      final url = Uri.parse('${ApiConstants.baseUrl}/estaciones'); // Ajusta tu endpoint si es diferente
 
       // 3. Enviamos la petición CON el gafete puesto
       final response = await http.get(
@@ -32,10 +32,10 @@ class BiomonitoreoService {
 
       if (response.statusCode == 200) {
         // Convertimos el texto JSON de Node.js en una Lista de Dart
-        final List<dynamic> biomonitoreos = jsonDecode(response.body);
-        return biomonitoreos;
+        final List<dynamic> estaciones = jsonDecode(response.body);
+        return estaciones;
       } else {
-        print("Error al obtener biomonitoreos: ${response.statusCode}");
+        print("Error al obtener estaciones: ${response.statusCode}");
         return null;
       }
     } catch (e) {
@@ -71,18 +71,18 @@ class BiomonitoreoService {
     }
   }
 
-  // --- Función para crear un nuevo proyecto ---
-  Future<Map<String, dynamic>?> crearBiomonitoreo(String nombreProyecto, String zonaId) async {
+  // --- Función para crear un nuevo estacion ---
+  Future<Map<String, dynamic>?> crearestacion(String nombreEstacion, String zonaId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
       if (token == null) return null;
 
-      final url = Uri.parse('${ApiConstants.baseUrl}/biomonitoreos'); 
+      final url = Uri.parse('${ApiConstants.baseUrl}/estaciones'); 
       
       // Respetamos los nombres de variables que pusiste en Node.js
       final bodyParams = jsonEncode({
-        "nombre_proyecto": nombreProyecto,
+        "nombre_estacion": nombreEstacion,
         "zona_id": zonaId
       });
 
@@ -96,7 +96,7 @@ class BiomonitoreoService {
       );
 
       if (response.statusCode == 201) {
-        return jsonDecode(response.body); // Retorna el proyecto creado (incluye el código generado)
+        return jsonDecode(response.body); // Retorna el estacion creado (incluye el código generado)
       } else {
         print("Error al crear: ${response.body}");
         return null;
@@ -107,14 +107,14 @@ class BiomonitoreoService {
     }
   }
 
-  // --- Función para unirse a un proyecto existente ---
-  Future<Map<String, dynamic>?> unirseProyecto(String codigo) async {
+  // --- Función para unirse a un estacion existente ---
+  Future<Map<String, dynamic>?> unirseEstacion(String codigo) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
       if (token == null) return null;
 
-      final url = Uri.parse('${ApiConstants.baseUrl}/biomonitoreos/unirse');
+      final url = Uri.parse('${ApiConstants.baseUrl}/estaciones/unirse');
 
       final response = await http.post(
         url,
@@ -135,19 +135,19 @@ class BiomonitoreoService {
         return {"exito": false, "mensaje": responseData['mensaje'] ?? 'Error desconocido'};
       }
     } catch (e) {
-      print("Error al unirse al proyecto: $e");
+      print("Error al unirse a la estacion: $e");
       return {"exito": false, "mensaje": "Error de conexión con el servidor"};
     }
   }
 
-  // --- Función para eliminar un colaborador del proyecto ---
-  Future<bool> removerColaborador(String biomonitoreoId, String colaboradorId) async {
+  // --- Función para eliminar un colaborador de la estacion ---
+  Future<bool> removerColaborador(String estacionId, String colaboradorId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
       if (token == null) return false;
 
-      final url = Uri.parse('${ApiConstants.baseUrl}/biomonitoreos/$biomonitoreoId/remover-colaborador');
+      final url = Uri.parse('${ApiConstants.baseUrl}/estaciones/$estacionId/remover-colaborador');
       
       final response = await http.put(
         url,

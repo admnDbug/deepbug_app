@@ -9,9 +9,9 @@ import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
 
 class Protocolo2Screen extends StatefulWidget {
-  final String biomonitoreoId; // <-- 1. RECIBIMOS EL ID DEL PROYECTO
+  final String estacionId; // <-- 1. RECIBIMOS EL ID DEL PROYECTO
 
-  const Protocolo2Screen({super.key, required this.biomonitoreoId});
+  const Protocolo2Screen({super.key, required this.estacionId});
 
   @override
   State<Protocolo2Screen> createState() => _Protocolo2ScreenState();
@@ -85,7 +85,7 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
     final localDB = LocalDBService();
     
     // 1. SOLAMENTE buscamos el progreso guardado en el teléfono (SQLite)
-    Map<String, dynamic>? data = await localDB.obtenerBorradorLocal(widget.biomonitoreoId, 2);
+    Map<String, dynamic>? data = await localDB.obtenerBorradorLocal(widget.estacionId, 2);
     
     // ELIMINADO: La llamada a cloudService.obtenerMiBorrador() se quitó por completo.
     // Con esto evitamos que la nube sobrescriba la data y borre nuestra fotografía offline.
@@ -239,18 +239,18 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
     final cloudService = ProtocoloService();
 
     await localDB.guardarBorradorLocal(
-      biomonitoreoId: widget.biomonitoreoId,
+      estacionId: widget.estacionId,
       protocoloNumero: 2,
       datosFormulario: datosCompletos,
       sincronizado: 0, 
     );
 
-    final exitoNube = await cloudService.sincronizarProtocolo(widget.biomonitoreoId, 2, datosCompletos);
+    final exitoNube = await cloudService.sincronizarProtocolo(widget.estacionId, 2, datosCompletos);
     setState(() => _isSubmitting = false);
 
     if (exitoNube && mounted) {
       await localDB.guardarBorradorLocal(
-        biomonitoreoId: widget.biomonitoreoId, protocoloNumero: 2, datosFormulario: datosCompletos, sincronizado: 1, 
+        estacionId: widget.estacionId, protocoloNumero: 2, datosFormulario: datosCompletos, sincronizado: 1, 
       );
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Guardado en el teléfono y sincronizado en la nube ☁️'), backgroundColor: Colors.green));
       return true;
@@ -374,7 +374,7 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
                       _buildCampoTexto('localidad', 'Localidad'),
                       Row(
                         children: [
-                          Expanded(child: _buildCampoTexto('proyecto', 'Proyecto')), const SizedBox(width: 12),
+                          Expanded(child: _buildCampoTexto('estacion', 'Estacion')), const SizedBox(width: 12),
                           Expanded(child: _buildCampoTexto('altura', 'Altura (msnm)', tecladoNumerico: true)),
                         ],
                       ),
@@ -621,7 +621,31 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-
+                  // NUEVA SECCIÓN: PARÁMETROS IN SITU
+                  _buildSeccionExpandible(
+                    titulo: 'Parámetros In Situ', icono: Icons.thermostat_outlined,
+                    contenido: [
+                      Row(
+                        children: [
+                          Expanded(child: _buildCampoTexto('pi_cond', 'Conductividad', tecladoNumerico: true)), const SizedBox(width: 8),
+                          Expanded(child: _buildCampoTexto('pi_ph', 'pH', tecladoNumerico: true)),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Expanded(child: _buildCampoTexto('pi_temp', 'Temperatura (°C)', tecladoNumerico: true)), const SizedBox(width: 8),
+                          Expanded(child: _buildCampoTexto('pi_od', 'Oxígeno Disuelto', tecladoNumerico: true)),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Expanded(child: _buildCampoTexto('pi_salinidad', 'Salinidad', tecladoNumerico: true)), const SizedBox(width: 8),
+                          Expanded(child: _buildCampoTexto('pi_turb', 'Turbiedad', tecladoNumerico: true)),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                   // 10. MEDICIONES
                   _buildSeccionExpandible(
                     titulo: ' Mediciones (Cuerpo de Agua)', icono: Icons.straighten_outlined,

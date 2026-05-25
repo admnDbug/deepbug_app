@@ -1,15 +1,14 @@
-// Archivo: lib/core/services/protocolo_service.dart (o la ruta que prefieras)
+// Archivo: lib/core/services/protocolo_service.dart
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../core/constants/api_constants.dart'; // Asegúrate de que esta ruta coincida con tu proyecto
+import '../../core/constants/api_constants.dart';
 
 class ProtocoloService {
   
   // --- Función para Enviar/Sincronizar Protocolos ---
-  // AÑADIDO: Parámetro opcional datosProtocolo5
-  Future<bool> sincronizarProtocolo(String biomonitoreoId, int numeroProtocolo, Map<String, dynamic>? datosFormulario, {Map<String, dynamic>? datosProtocolo5}) async {
+  Future<bool> sincronizarProtocolo(String estacionId, int numeroProtocolo, Map<String, dynamic>? datosFormulario, {Map<String, dynamic>? datosProtocolo5}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
@@ -17,14 +16,13 @@ class ProtocoloService {
 
       final url = Uri.parse('${ApiConstants.baseUrl}/protocolos/sincronizar');
 
-      // Armamos el mapa dinámico respetando si es Protocolo 1-4 o Protocolo 5
+      // ¡CORRECCIÓN CRÍTICA! La llave del JSON ahora es estacion_id
       final Map<String, dynamic> protocoloData = {
-        "biomonitoreo_id": biomonitoreoId,
+        "estacion_id": estacionId, 
         "datos_formulario": datosFormulario,
         "protocolo_numero": numeroProtocolo
       };
 
-      // Si hay datos normales (Protocolos 1 al 4) los inyecta
       if (datosFormulario != null) {
         protocoloData["datos_formulario"] = datosFormulario;
       }
@@ -32,6 +30,7 @@ class ProtocoloService {
       // Si es el Protocolo 5, inyecta su llave especial
       if (datosProtocolo5 != null) {
         protocoloData["datos_protocolo_5"] = datosProtocolo5;
+        protocoloData["datos_formulario"] = null; // P5 no usa este campo
       }
 
       final bodyParams = jsonEncode({
@@ -47,7 +46,7 @@ class ProtocoloService {
         body: bodyParams,
       );
 
-      if (response.statusCode == 201) {
+      if (response.statusCode == 201 || response.statusCode == 200) {
         print("Protocolo $numeroProtocolo sincronizado con éxito en la BD.");
         return true;
       } else {
@@ -61,13 +60,14 @@ class ProtocoloService {
   }
 
   // --- Función para obtener el borrador previo ---
-  Future<Map<String, dynamic>?> obtenerMiBorrador(String biomonitoreoId, int numeroProtocolo) async {
+  Future<Map<String, dynamic>?> obtenerMiBorrador(String estacionId, int numeroProtocolo) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
       if (token == null) return null;
 
-      final url = Uri.parse('${ApiConstants.baseUrl}/protocolos/mi-borrador/$biomonitoreoId/$numeroProtocolo');
+      // URL actualizada con la nueva nomenclatura
+      final url = Uri.parse('${ApiConstants.baseUrl}/protocolos/mi-borrador/$estacionId/$numeroProtocolo');
 
       final response = await http.get(
         url,
@@ -78,13 +78,12 @@ class ProtocoloService {
       );
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body); // Retorna todo el documento
+        return jsonDecode(response.body); 
       }
-      return null; // Si es 404 (no hay borrador) retorna null
+      return null; 
     } catch (e) {
       print("Error al obtener borrador: $e");
       return null;
     }
   }
-
 }

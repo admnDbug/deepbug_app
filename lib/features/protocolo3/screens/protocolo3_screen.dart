@@ -5,9 +5,9 @@ import '../../../core/services/protocolo_service.dart';
 import '../../../core/services/local_db_service.dart';
 
 class Protocolo3Screen extends StatefulWidget {
-  final String biomonitoreoId; // <-- NUEVO: RECIBIMOS EL ID DEL PROYECTO
+  final String estacionId; // <-- NUEVO: RECIBIMOS EL ID DEL PROYECTO
 
-  const Protocolo3Screen({super.key, required this.biomonitoreoId});
+  const Protocolo3Screen({super.key, required this.estacionId});
 
   @override
   State<Protocolo3Screen> createState() => _Protocolo3ScreenState();
@@ -56,7 +56,7 @@ class _Protocolo3ScreenState extends State<Protocolo3Screen> {
     final localDB = LocalDBService();
     
     // 1. SOLAMENTE buscamos el progreso guardado en el teléfono (SQLite)
-    Map<String, dynamic>? data = await localDB.obtenerBorradorLocal(widget.biomonitoreoId, 3);
+    Map<String, dynamic>? data = await localDB.obtenerBorradorLocal(widget.estacionId, 3);
 
     // ELIMINADO: La llamada a cloudService.obtenerMiBorrador() se quitó por completo
     // para evitar que la nube sobrescriba lo que el técnico esté midiendo en campo.
@@ -103,18 +103,18 @@ class _Protocolo3ScreenState extends State<Protocolo3Screen> {
     final cloudService = ProtocoloService();
 
     await localDB.guardarBorradorLocal(
-      biomonitoreoId: widget.biomonitoreoId,
+      estacionId: widget.estacionId,
       protocoloNumero: 3,
       datosFormulario: datosCompletos,
       sincronizado: 0, 
     );
 
-    final exitoNube = await cloudService.sincronizarProtocolo(widget.biomonitoreoId, 3, datosCompletos);
+    final exitoNube = await cloudService.sincronizarProtocolo(widget.estacionId, 3, datosCompletos);
     setState(() => _isSubmitting = false);
 
     if (exitoNube && mounted) {
       await localDB.guardarBorradorLocal(
-        biomonitoreoId: widget.biomonitoreoId, protocoloNumero: 3, datosFormulario: datosCompletos, sincronizado: 1, 
+        estacionId: widget.estacionId, protocoloNumero: 3, datosFormulario: datosCompletos, sincronizado: 1, 
       );
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Guardado en el teléfono y sincronizado en la nube ☁️'), backgroundColor: Colors.green));
       return true;

@@ -1,16 +1,16 @@
-// Archivo: lib/features/dashboard/screens/unirse_proyecto_screen.dart
+// Archivo: lib/features/dashboard/screens/unirse_estacion_screen.dart
 
 import 'package:flutter/material.dart';
-import '../services/biomonitoreo_service.dart';
+import '../services/estacion_service.dart';
 
-class UnirseProyectoScreen extends StatefulWidget {
-  const UnirseProyectoScreen({super.key});
+class UnirseEstacionScreen extends StatefulWidget {
+  const UnirseEstacionScreen({super.key});
 
   @override
-  State<UnirseProyectoScreen> createState() => _UnirseProyectoScreenState();
+  State<UnirseEstacionScreen> createState() => _UnirseEstacionScreenState();
 }
 
-class _UnirseProyectoScreenState extends State<UnirseProyectoScreen> {
+class _UnirseEstacionScreenState extends State<UnirseEstacionScreen> {
   // Controlador para leer lo que el usuario escribe
   final TextEditingController _codigoController = TextEditingController();
   bool _estaCargando = false;
@@ -31,8 +31,8 @@ class _UnirseProyectoScreenState extends State<UnirseProyectoScreen> {
     });
 
     // --- LLAMADA REAL AL BACKEND ---
-    final service = BiomonitoreoService();
-    final resultado = await service.unirseProyecto(codigo);
+    final service = EstacionService();
+    final resultado = await service.unirseEstacion(codigo);
 
     setState(() {
       _estaCargando = false; // Detenemos la carga
@@ -65,7 +65,7 @@ class _UnirseProyectoScreenState extends State<UnirseProyectoScreen> {
         ),
         title: const Text('¡Código Autorizado!', textAlign: TextAlign.center),
         content: const Text(
-          'Te has unido exitosamente al biomonitoreo como Colaborador. Ya puedes empezar a llenar los protocolos.',
+          'Te has unido exitosamente a la estacion como Colaborador. Ya puedes empezar a llenar los protocolos.',
           textAlign: TextAlign.center,
         ),
         actions: [
@@ -100,7 +100,7 @@ class _UnirseProyectoScreenState extends State<UnirseProyectoScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Unirse a Proyecto', style: TextStyle(fontSize: 16)),
+        title: const Text('Unirse a Estacion', style: TextStyle(fontSize: 16)),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -123,7 +123,7 @@ class _UnirseProyectoScreenState extends State<UnirseProyectoScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Pídele al Responsable del biomonitoreo que te comparta el código de acceso (Ej. LERM-X9).',
+                'Pídele al Responsable de la estacion que te comparta el código de acceso (Ej. LERM-X9).',
                 textAlign: TextAlign.center,
                 // Usamos onSurfaceVariant para el gris dinámico
                 style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
