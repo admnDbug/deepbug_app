@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 class AppTheme {
   static const Color colorInstitucional = Color(0xFF009688);
 
-  // --- TEMA CLARO ---
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
@@ -21,7 +20,6 @@ class AppTheme {
         titleTextStyle: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 16),
         iconTheme: IconThemeData(color: Colors.black87),
       ),
-      // CORRECCIÓN: Usamos CardThemeData
       cardTheme: CardThemeData(
         color: Colors.white,
         surfaceTintColor: Colors.white,
@@ -41,7 +39,6 @@ class AppTheme {
     );
   }
 
-  // --- TEMA OSCURO ---
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
@@ -55,7 +52,6 @@ class AppTheme {
         titleTextStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
         iconTheme: IconThemeData(color: Colors.white),
       ),
-      // CORRECCIÓN: Usamos CardThemeData
       cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(

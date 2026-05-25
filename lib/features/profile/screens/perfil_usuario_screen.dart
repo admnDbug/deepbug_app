@@ -59,10 +59,9 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen> {
     }
   }
 
-  // --- FUNCIÓN REAL DE CERRAR SESIÓN ---
   void _cerrarSesionReal() async {
     final authService = AuthService();
-    await authService.logout(); // Esto borra el token de SharedPreferences
+    await authService.logout();
 
     if (mounted) {
       Navigator.pushAndRemoveUntil(
@@ -88,7 +87,6 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // --- FOTO DE PERFIL Y DATOS DINÁMICOS ---
               CircleAvatar(
                 radius: 50,
                 backgroundColor: Theme.of(context).colorScheme.primary,
@@ -117,7 +115,6 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen> {
                 ),
               const SizedBox(height: 8),
 
-              // --- BADGE DE ROL ---
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
@@ -163,8 +160,6 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen> {
                 onTap: () => _mostrarSeguridad(context),
               ),
 
-              // --- TILE DE MODO OSCURO ---
-              // En lib/features/profile/screens/perfil_usuario_screen.dart
              Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: Consumer<ThemeProvider>(
@@ -182,7 +177,6 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen> {
 
               const SizedBox(height: 40),
 
-              // --- CERRAR SESIÓN ---
               OutlinedButton.icon(
                 onPressed: () => _mostrarDialogoCerrarSesion(context),
                 icon: const Icon(Icons.logout, color: Colors.red),
@@ -219,10 +213,7 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen> {
       ),
     );
   }
-
-  // --- MODAL CAMBIAR CONTRASEÑA ---
   void _mostrarSeguridad(BuildContext context) {
-    // Controladores para capturar las contraseñas
     final actualController = TextEditingController();
     final nuevaController = TextEditingController();
 
@@ -264,7 +255,7 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen> {
                 final exito = await authService.cambiarPassword(actual, nueva);
 
                 if (mounted) {
-                  Navigator.pop(context); // Cerrar modal
+                  Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(exito ? 'Contraseña actualizada' : 'Error: La contraseña actual es incorrecta'),
@@ -307,12 +298,11 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen> {
             _buildCampoTexto(context, 'Nombre completo', controlador: nombreController),
             _buildCampoTexto(context, 'Institución (Ej. ENCB, UNAM)', controlador: institucionController),
             
-            // Campo de solo lectura para el correo
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: TextFormField(
                 initialValue: email,
-                enabled: false, // <-- Deshabilitado
+                enabled: false, 
                 decoration: InputDecoration(
                   labelText: 'Correo electrónico (No editable)',
                   filled: true,
@@ -341,9 +331,9 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen> {
                 final exito = await authService.actualizarPerfil(nuevoNombre, nuevaInstitucion);
 
                 if (mounted) {
-                  Navigator.pop(context); // Cierra el modal
+                  Navigator.pop(context);
                   if (exito) {
-                    _cargarDatosPerfil(); // <-- RECARGAMOS LOS DATOS EN LA PANTALLA
+                    _cargarDatosPerfil();
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Datos actualizados exitosamente'), backgroundColor: Colors.green),
                     );
@@ -392,8 +382,8 @@ class _PerfilUsuarioScreenState extends State<PerfilUsuarioScreen> {
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // Cierra el dialog
-              _cerrarSesionReal();    // Ejecuta la función real
+              Navigator.pop(context);
+              _cerrarSesionReal(); 
             },
             child: const Text('Salir', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
           ),

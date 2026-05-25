@@ -5,7 +5,7 @@ import '../../../core/services/protocolo_service.dart';
 import '../../../core/services/local_db_service.dart';
 
 class Protocolo3Screen extends StatefulWidget {
-  final String estacionId; // <-- NUEVO: RECIBIMOS EL ID DEL PROYECTO
+  final String estacionId;
 
   const Protocolo3Screen({super.key, required this.estacionId});
 
@@ -17,10 +17,8 @@ class _Protocolo3ScreenState extends State<Protocolo3Screen> {
   bool _isSubmitting = false;
   bool _isLoadingData = true;
 
-  // --- TIPO DE GRADIENTE ---
-  String _tipoGradiente = 'Alto'; // Puede ser 'Alto' o 'Bajo'
+  String _tipoGradiente = 'Alto'; 
 
-  // --- CAJAS INDEPENDIENTES DE PUNTUACIÓN ---
   final Map<String, double> _puntajesAlto = {
     'p1': 0, 'p2': 0, 'p3': 0, 'p4': 0, 'p5': 0, 'p6': 0, 'p7': 0,
     'p8Izq': 0, 'p8Der': 0, 'p9Izq': 0, 'p9Der': 0, 'p10Izq': 0, 'p10Der': 0,
@@ -34,14 +32,12 @@ class _Protocolo3ScreenState extends State<Protocolo3Screen> {
   Map<String, double> get _puntajesActuales =>
       _tipoGradiente == 'Alto' ? _puntajesAlto : _puntajesBajo;
 
-  // --- CÁLCULOS INDEPENDIENTES ---
   int get _puntajeTotalAlto =>
       _puntajesAlto.values.fold(0.0, (sum, val) => sum + val).toInt();
       
   int get _puntajeTotalBajo =>
       _puntajesBajo.values.fold(0.0, (sum, val) => sum + val).toInt();
 
-  // Mantenemos este para mostrarlo en la interfaz (la barra inferior)
   int get _puntajeTotal =>
       _tipoGradiente == 'Alto' ? _puntajeTotalAlto : _puntajeTotalBajo;
 
@@ -51,15 +47,10 @@ class _Protocolo3ScreenState extends State<Protocolo3Screen> {
     _cargarBorrador();
   }
 
-  // --- CARGAR DATOS (SÓLO LOCAL - OFFLINE) ---
   Future<void> _cargarBorrador() async {
     final localDB = LocalDBService();
     
-    // 1. SOLAMENTE buscamos el progreso guardado en el teléfono (SQLite)
     Map<String, dynamic>? data = await localDB.obtenerBorradorLocal(widget.estacionId, 3);
-
-    // ELIMINADO: La llamada a cloudService.obtenerMiBorrador() se quitó por completo
-    // para evitar que la nube sobrescriba lo que el técnico esté midiendo en campo.
 
     if (data != null && data['datos_formulario'] != null) {
       final form = data['datos_formulario'];
@@ -83,18 +74,17 @@ class _Protocolo3ScreenState extends State<Protocolo3Screen> {
     }
   }
 
-  // --- PREPARAR JSON ---
   Map<String, dynamic> _prepararJSON() {
     return {
       "tipo_gradiente": _tipoGradiente,
       "puntajes_alto": _puntajesAlto,
       "puntajes_bajo": _puntajesBajo,
-      "puntaje_total_alto": _puntajeTotalAlto, // <- Guardamos la suma alta
-      "puntaje_total_bajo": _puntajeTotalBajo, // <- Guardamos la suma baja
+      "puntaje_total_alto": _puntajeTotalAlto,
+      "puntaje_total_bajo": _puntajeTotalBajo,
     };
   }
 
-  // --- GUARDAR PROTOCOLO (OFFLINE FIRST) ---
+  
   Future<bool> _guardarProtocolo() async {
     setState(() => _isSubmitting = true);
     Map<String, dynamic> datosCompletos = _prepararJSON(); 
@@ -125,7 +115,6 @@ class _Protocolo3ScreenState extends State<Protocolo3Screen> {
     return false;
   }
 
-  // --- FLECHA HACIA ATRÁS ---
   Future<bool> _alPresionarAtras() async {
     bool? guardar = await showDialog(
       context: context,
@@ -150,7 +139,6 @@ class _Protocolo3ScreenState extends State<Protocolo3Screen> {
     return false;
   }
 
-  // Los colores de estado (Rojo, Amarillo, Verde) los conservamos igual porque son semánticos
   Color _obtenerColorCategoria(double valor, {bool esMitad = false}) {
     double maximo = esMitad ? 10 : 20;
     double porcentaje = valor / maximo;
@@ -270,7 +258,6 @@ class _Protocolo3ScreenState extends State<Protocolo3Screen> {
               padding: const EdgeInsets.all(16.0),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
-                  // --- SELECTOR DE GRADIENTE DINÁMICO ---
                   Container(
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.surfaceContainerHighest, 
@@ -419,9 +406,6 @@ class _Protocolo3ScreenState extends State<Protocolo3Screen> {
       ),
     );
   }
-
-  // --- WIDGETS AUXILIARES ---
-
   Widget _buildSliderParametro({
     required String titulo,
     required double valorActual,

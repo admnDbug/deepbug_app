@@ -11,11 +11,9 @@ class UnirseEstacionScreen extends StatefulWidget {
 }
 
 class _UnirseEstacionScreenState extends State<UnirseEstacionScreen> {
-  // Controlador para leer lo que el usuario escribe
   final TextEditingController _codigoController = TextEditingController();
   bool _estaCargando = false;
 
-  // Función REAL que conecta con el servidor
   Future<void> _validarCodigo() async {
     final codigo = _codigoController.text.trim();
 
@@ -27,23 +25,20 @@ class _UnirseEstacionScreenState extends State<UnirseEstacionScreen> {
     }
 
     setState(() {
-      _estaCargando = true; // Mostramos el círculo de carga
+      _estaCargando = true;
     });
 
-    // --- LLAMADA REAL AL BACKEND ---
     final service = EstacionService();
     final resultado = await service.unirseEstacion(codigo);
 
     setState(() {
-      _estaCargando = false; // Detenemos la carga
+      _estaCargando = false; 
     });
 
     if (mounted) {
       if (resultado != null && resultado['exito'] == true) {
-        // ¡Todo salió bien en la base de datos!
         _mostrarDialogoExito();
       } else {
-        // Node.js nos rebotó (código inválido, o ya somos miembros)
         final mensajeError = resultado != null ? resultado['mensaje'] : 'Error de conexión';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(mensajeError), backgroundColor: Colors.red),
@@ -55,12 +50,12 @@ class _UnirseEstacionScreenState extends State<UnirseEstacionScreen> {
   void _mostrarDialogoExito() {
     showDialog(
       context: context,
-      barrierDismissible: false, // El usuario no puede cerrarlo tocando afuera
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         icon: const Icon(
           Icons.check_circle_outline,
-          color: Colors.green, // Este lo dejamos verde porque es de éxito universal
+          color: Colors.green,
           size: 60,
         ),
         title: const Text('¡Código Autorizado!', textAlign: TextAlign.center),
@@ -92,7 +87,7 @@ class _UnirseEstacionScreenState extends State<UnirseEstacionScreen> {
 
   @override
   void dispose() {
-    _codigoController.dispose(); // Siempre limpiamos la memoria
+    _codigoController.dispose(); 
     super.dispose();
   }
 
@@ -111,8 +106,7 @@ class _UnirseEstacionScreenState extends State<UnirseEstacionScreen> {
             children: [
               Icon(
                 Icons.group_add_outlined,
-                size: 80,
-                // Usamos el color primario del tema
+                size: 80,          
                 color: Theme.of(context).colorScheme.primary,
               ),
               const SizedBox(height: 24),
@@ -125,7 +119,6 @@ class _UnirseEstacionScreenState extends State<UnirseEstacionScreen> {
               Text(
                 'Pídele al Responsable de la estacion que te comparta el código de acceso (Ej. LERM-X9).',
                 textAlign: TextAlign.center,
-                // Usamos onSurfaceVariant para el gris dinámico
                 style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 40),
@@ -144,7 +137,7 @@ class _UnirseEstacionScreenState extends State<UnirseEstacionScreen> {
                   hintText: 'CÓDIGO',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none, // Quitamos el borde para un diseño más limpio
+                    borderSide: BorderSide.none, 
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -171,7 +164,6 @@ class _UnirseEstacionScreenState extends State<UnirseEstacionScreen> {
                   : ElevatedButton(
                       onPressed: _validarCodigo,
                       style: ElevatedButton.styleFrom(
-                        // Adaptamos el botón negro: Negro de día, gris claro de noche
                         backgroundColor: Theme.of(context).colorScheme.onSurface,
                         foregroundColor: Theme.of(context).colorScheme.surface,
                         padding: const EdgeInsets.symmetric(vertical: 16),

@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import '../../dashboard/screens/dashboard_screen.dart'; // Importante: Asegúrate de que esta ruta sea correcta
+import '../../dashboard/screens/dashboard_screen.dart';
 
 class RegistroScreen extends StatefulWidget {
   const RegistroScreen({super.key});
@@ -20,11 +20,9 @@ class _RegistroScreenState extends State<RegistroScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _institucionController = TextEditingController(); 
-  final TextEditingController _codigoController = TextEditingController(); // NUEVO: Controlador del código
+  final TextEditingController _codigoController = TextEditingController(); 
 
-  // Función maestra de registro
   void _crearCuenta() async {
-    // Validaciones básicas: AHORA EL CÓDIGO ES OBLIGATORIO
     if (_nombreController.text.trim().isEmpty || 
         _emailController.text.trim().isEmpty || 
         _passwordController.text.trim().isEmpty || 
@@ -41,10 +39,6 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
     final authService = AuthService();
     
-    // Asumiendo que tu AuthService ahora devuelve un Map (o un booleano si adaptaste el servicio)
-    // Si tu servicio devuelve true/false, y ya no devuelve el rol, la validación de abajo será más sencilla.
-    // Aquí asumo que devuelve un booleano basado en tu código original, pero modificado para enviar el código.
-    // Asegúrate de que tu `AuthService.registrar` acepta el parámetro 'codigo' como vimos en el paso anterior.
     final resultado = await authService.registrar(
       _nombreController.text.trim(),
       _emailController.text.trim(),
@@ -55,10 +49,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
 
     setState(() => _isLoading = false); // Detener carga
 
-    if (resultado == true && mounted) { // O 'if (exito && mounted)' dependiendo de cómo dejaste tu AuthService
-      // ¡Magia lista! Como ya validamos el código en el backend,
-      // el usuario ya tiene rol de Responsable o Colaborador.
-      // Nos vamos directo al Dashboard. ¡Adiós Onboarding!
+    if (resultado == true && mounted) { 
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const DashboardScreen()),
@@ -77,7 +68,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _institucionController.dispose();
-    _codigoController.dispose(); // No olvides disponer el nuevo controlador
+    _codigoController.dispose();
     super.dispose();
   }
 
@@ -111,7 +102,6 @@ class _RegistroScreenState extends State<RegistroScreen> {
               const Text('Únete a una estacion ingresando tu código', textAlign: TextAlign.center),
               const SizedBox(height: 40),
 
-              // --- FORMULARIO CON CONTROLADORES ---
               TextField(
                 controller: _nombreController, 
                 textCapitalization: TextCapitalization.words,
@@ -168,10 +158,9 @@ class _RegistroScreenState extends State<RegistroScreen> {
               ),
               const SizedBox(height: 20),
 
-              // --- NUEVO CAMPO OBLIGATORIO: CÓDIGO DE INVITACIÓN ---
               TextField(
                 controller: _codigoController,
-                textCapitalization: TextCapitalization.characters, // Ideal para códigos
+                textCapitalization: TextCapitalization.characters,
                 decoration: InputDecoration(
                   labelText: 'Código de Invitación',
                   hintText: 'Ej. BIO-1234',
@@ -179,7 +168,6 @@ class _RegistroScreenState extends State<RegistroScreen> {
                   fillColor: colorScheme.surfaceContainerHighest,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   prefixIcon: const Icon(Icons.vpn_key_outlined),
-                  // Destacar ligeramente el campo
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(color: colorScheme.primary, width: 2),
@@ -188,7 +176,6 @@ class _RegistroScreenState extends State<RegistroScreen> {
               ),
               const SizedBox(height: 40),
 
-              // --- BOTÓN DE CARGA ---
               SizedBox(
                 height: 50,
                 child: ElevatedButton(

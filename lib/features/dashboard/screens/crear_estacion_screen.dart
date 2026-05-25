@@ -41,7 +41,6 @@ class _CrearEstacionScreenState extends State<CrearEstacionScreen> {
   void _crearEstacion() async {
     final nombre = _nombreController.text.trim();
 
-    // Validaciones básicas
     if (nombre.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Por favor, ingresa un nombre para la estacion.'), backgroundColor: Colors.orange),
@@ -140,7 +139,6 @@ class _CrearEstacionScreenState extends State<CrearEstacionScreen> {
               ),
               const SizedBox(height: 40),
 
-              // --- CAMPO NOMBRE DEL PROYECTO ---
               TextField(
                 controller: _nombreController,
                 textCapitalization: TextCapitalization.words,
@@ -154,7 +152,6 @@ class _CrearEstacionScreenState extends State<CrearEstacionScreen> {
               ),
               const SizedBox(height: 20),
 
-              // --- DROPDOWN PARA SELECCIONAR LA ZONA ---
               _isLoadingZonas 
                 ? const Center(child: CircularProgressIndicator())
                 : _zonas.isEmpty
@@ -214,7 +211,6 @@ class _CrearEstacionScreenState extends State<CrearEstacionScreen> {
               
               const SizedBox(height: 40),
 
-              // --- BOTÓN CREAR ---
               SizedBox(
                 height: 55,
                 child: ElevatedButton(

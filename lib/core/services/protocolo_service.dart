@@ -7,7 +7,6 @@ import '../../core/constants/api_constants.dart';
 
 class ProtocoloService {
   
-  // --- Función para Enviar/Sincronizar Protocolos ---
   Future<bool> sincronizarProtocolo(String estacionId, int numeroProtocolo, Map<String, dynamic>? datosFormulario, {Map<String, dynamic>? datosProtocolo5}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -16,7 +15,6 @@ class ProtocoloService {
 
       final url = Uri.parse('${ApiConstants.baseUrl}/protocolos/sincronizar');
 
-      // ¡CORRECCIÓN CRÍTICA! La llave del JSON ahora es estacion_id
       final Map<String, dynamic> protocoloData = {
         "estacion_id": estacionId, 
         "datos_formulario": datosFormulario,
@@ -59,14 +57,12 @@ class ProtocoloService {
     }
   }
 
-  // --- Función para obtener el borrador previo ---
   Future<Map<String, dynamic>?> obtenerMiBorrador(String estacionId, int numeroProtocolo) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
       if (token == null) return null;
 
-      // URL actualizada con la nueva nomenclatura
       final url = Uri.parse('${ApiConstants.baseUrl}/protocolos/mi-borrador/$estacionId/$numeroProtocolo');
 
       final response = await http.get(

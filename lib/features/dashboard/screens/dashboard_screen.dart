@@ -33,7 +33,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String? _errorMessage;
 
   TextEditingController _searchController = TextEditingController();
-  List<dynamic> _estacionesFiltradas = []; // Nueva lista para el buscador
+  List<dynamic> _estacionesFiltradas = []; 
 
   @override
   void initState() {
@@ -53,7 +53,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // --- CARGAR PERFIL CON OFFLINE FIRST ---
   Future<void> _inicializarDatos() async {
     final authService = AuthService();
     final prefs = await SharedPreferences.getInstance();
@@ -122,7 +121,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       prefs.setString('estacions_cache', jsonEncode(datosBackend));
       setState(() {
         _estaciones = datosBackend;
-        _estacionesFiltradas = datosBackend; // Inicializamos ambas listas
+        _estacionesFiltradas = datosBackend;
         _isLoading = false;
       });
     } else {
@@ -131,7 +130,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (cache != null) {
         setState(() {
           _estaciones = jsonDecode(cache); 
-          _estacionesFiltradas = jsonDecode(cache); // Inicializamos ambas listas
+          _estacionesFiltradas = jsonDecode(cache);
           _isLoading = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
@@ -146,7 +145,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // Nueva función para el buscador
   void _filtrarEstaciones(String query) {
     if (query.isEmpty) {
       setState(() => _estacionesFiltradas = _estaciones);
@@ -160,7 +158,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  // --- SINCRONIZAR TODO (INTEGRACIÓN INTELIGENTE PARA PROTOCOLO 5) ---
   Future<void> _sincronizarTodo() async {
     setState(() => _isSyncing = true);
     
@@ -173,16 +170,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final Map<String, dynamic> datosForm = item['datos_formulario'] ?? {};
       bool ok = false;
 
-      // 🕵️‍♂️ CONDICIONAL MAESTRA: Si el pendiente es el "Jefe Final" (Protocolo 5)
       if (numProtocolo == 5) {
         Map<String, dynamic>? datosP5;
         
-        // Extraemos de forma segura la estructura interna que espera tu Node.js
         if (datosForm.containsKey('datos_protocolo_5')) {
           datosP5 = datosForm['datos_protocolo_5'];
         }
 
-        // Realizamos el disparo usando el contrato oficial de tu Web original
         ok = await cloudService.sincronizarProtocolo(
           item['estacion_id'],
           numProtocolo,
@@ -204,13 +198,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           estacionId: item['estacion_id'],
           protocoloNumero: numProtocolo,
           datosFormulario: datosForm,
-          sincronizado: 1, // <--- Ahora sí pasará a estar limpio
+          sincronizado: 1, 
         );
         exitos++;
       }
     }
 
-    // Refrescamos contadores y la lista de estacion en pantalla
     await _revisarPendientesLocales();
     await _cargarEstaciones();
     setState(() => _isSyncing = false);
@@ -313,7 +306,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                 ),
-              // BUSCADOR IMPLEMENTADO
               TextField(
                 controller: _searchController,
                 onChanged: _filtrarEstaciones,
@@ -435,15 +427,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             estadoP1 = estacion['estado_protocolos']['protocolo1'];
           }
 
-          // --- ACTUALIZADO: Extracción de la zona desde zona_id ---
         String zonaText = 'Zona no especificada';
         
         if (estacion['zona_id'] != null) {
-          // Si el backend hizo el populate, zona_id será un Mapa
           if (estacion['zona_id'] is Map) {
             zonaText = estacion['zona_id']['nombre'] ?? 'Zona sin nombre';
           } else {
-            // Si por alguna razón llega solo el ID (String)
             zonaText = 'ID: ${estacion['zona_id'].toString().substring(0, 5)}...';
           }
         }
@@ -453,7 +442,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           estacion['_id'].toString(),
           estacion['nombre_estacion'] ?? 'Estación Sin Nombre',
           'Activo',
-          zonaText, // <--- Ahora pasamos el nombre real
+          zonaText, 
           estacion['codigo_invitacion'] ?? 'S/C',
           estadoP1,
         );
@@ -462,7 +451,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   );
 }
 
-  // --- ACTUALIZADO: Recibe zonaText y code por separado ---
   Widget _buildProjectCard(
     BuildContext context,
     String id, 
@@ -491,7 +479,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           name,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
-        // --- ACTUALIZADO: Mostramos la zona en el subtítulo ---
         subtitle: Text(
           '$status • Zona: $zonaText',
           style: TextStyle(
@@ -501,7 +488,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // CAMBIO: Evaluamos estrictamente el estado 0 (Rojo). El naranja (1) se descarta.
             if (estadoP1 == 0) ...[
               Icon(
                 Icons.warning_amber_rounded,
@@ -521,7 +507,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 nombreEstacion: name,
                 estadoProtocolo1: estadoP1,
                 rolUsuario: userRole,
-                codigoEstacion: code, // El código sigue viajando oculto
+                codigoEstacion: code,
               ),
             ),
           );

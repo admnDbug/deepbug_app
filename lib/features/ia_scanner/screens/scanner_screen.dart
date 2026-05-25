@@ -1,7 +1,7 @@
 // Archivo: lib/features/ia_scanner/screens/scanner_screen.dart
 
 import 'dart:io';
-import 'dart:convert'; // <-- Necesario para Base64
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:tflite_v2/tflite_v2.dart';
@@ -9,6 +9,9 @@ import 'package:provider/provider.dart';
 
 import '../../protocolo5/providers/protocolo5_provider.dart';
 import '../../protocolo5/screens/protocolo5_screen.dart';
+
+import 'dart:math' as math;
+import 'package:image/image.dart' as img;
 
 class ScannerScreen extends StatefulWidget {
   const ScannerScreen({super.key});
@@ -58,7 +61,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
     final ImagePicker picker = ImagePicker();
     final XFile? foto = await picker.pickImage(
       source: fuente,
-      imageQuality: 50, // Comprimimos al 50% para proteger el almacenamiento local y la nube
+      imageQuality: 50,
     );
 
     if (foto != null) {
@@ -71,12 +74,25 @@ class _ScannerScreenState extends State<ScannerScreen> {
   }
 
   Future<void> _clasificarImagen(File imagen) async {
+    final bytes = await imagen.readAsBytes();
+    img.Image? originalImage = img.decodeImage(bytes);
+
+    if (originalImage != null) {
+      int cropSize = math.min(originalImage.width, originalImage.height);
+      int offsetX = (originalImage.width - cropSize) ~/ 2;
+      int offsetY = (originalImage.height - cropSize) ~/ 2;
+
+      img.Image croppedImage = img.copyCrop(originalImage,
+          x: offsetX, y: offsetY, width: cropSize, height: cropSize);
+
+      await imagen.writeAsBytes(img.encodeJpg(croppedImage));
+    }
     var predicciones = await Tflite.runModelOnImage(
       path: imagen.path,
-      imageMean: 127.5, 
+      imageMean: 127.5,
       imageStd: 127.5,
-      numResults: 3, 
-      threshold: 0.1, 
+      numResults: 5, 
+      threshold: 0.1,
       asynch: true,
     );
 
@@ -214,11 +230,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
     );
   }
 
-  // --- CORREGIDO: Busca el espécimen directamente en el catálogo dinámico de la BD ---
   Future<void> _agregarDesdeIA(BuildContext context, String nombreBuscado) async {
     final provider = Provider.of<Protocolo5Provider>(context, listen: false);
     
-    // CAMBIO CLAVE: Compara el resultado de la CNN contra el catálogo vivo descargado de Mongo
     final match = provider.catalogo.where((f) => f.nombre.toLowerCase() == nombreBuscado.toLowerCase()).firstOrNull;
 
     if (match != null) {

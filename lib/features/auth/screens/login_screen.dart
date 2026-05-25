@@ -3,9 +3,9 @@
 import 'package:flutter/material.dart';
 import '../../dashboard/screens/dashboard_screen.dart';
 import 'registro_screen.dart';
-import '../services/auth_service.dart'; // <-- Importamos tu servicio de autenticación
+import '../services/auth_service.dart';
 
-class LoginScreen extends StatefulWidget { // <-- Cambiamos a StatefulWidget
+class LoginScreen extends StatefulWidget { 
   const LoginScreen({super.key});
 
   @override
@@ -13,14 +13,11 @@ class LoginScreen extends StatefulWidget { // <-- Cambiamos a StatefulWidget
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // 1. Controladores para extraer el texto que el usuario escribe
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   
-  // 2. Variable para mostrar un indicador de carga
   bool _isLoading = false;
 
-  // 3. La función maestra que habla con el Backend
   void _iniciarSesion() async {
     // Escondemos el teclado
     FocusScope.of(context).unfocus();
@@ -29,7 +26,6 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true; // Prendemos la animación de carga
     });
 
-    // Llamamos a tu servicio
     final authService = AuthService();
     final token = await authService.login(
       _emailController.text.trim(),
@@ -41,7 +37,6 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     if (token != null) {
-      // ¡Éxito! El backend nos dio el gafete VIP. Pasamos al Dashboard.
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -63,7 +58,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // Siempre debemos limpiar los controladores al cerrar la pantalla
   @override
   void dispose() {
     _emailController.dispose();
@@ -102,9 +96,8 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 40),
               
-              // --- CAJAS DE TEXTO CON CONTROLADORES ---
               TextField(
-                controller: _emailController, // <-- Le conectamos el controlador
+                controller: _emailController, 
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   labelText: 'Correo electrónico',
@@ -116,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 20),
               TextField(
-                controller: _passwordController, // <-- Le conectamos el controlador
+                controller: _passwordController, 
                 obscureText: true,
                 decoration: InputDecoration(
                   labelText: 'Contraseña',
@@ -128,7 +121,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 40),
               
-              // --- BOTÓN CON ANIMACIÓN DE CARGA ---
               SizedBox(
                 height: 50, // Fijamos la altura para que no brinque al cargar
                 child: ElevatedButton(

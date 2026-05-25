@@ -6,15 +6,14 @@ import '../../../core/services/protocolo_service.dart';
 import '../../../core/services/local_db_service.dart';
 import '../providers/protocolo5_provider.dart';
 import '../models/familia_macroinvertebrado.dart';
-import '../../ia_scanner/screens/scanner_screen.dart'; // Ruta del scanner
+import '../../ia_scanner/screens/scanner_screen.dart';
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import '../../../core/constants/api_constants.dart';
 
 class Protocolo5Screen extends StatefulWidget {
-  final String estacionId; // <-- RECIBIMOS EL ID DEL PROYECTO
+  final String estacionId; 
 
   const Protocolo5Screen({super.key, required this.estacionId});
 
@@ -33,20 +32,16 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
       _cargarBorrador();
     });
   }
-
-  // --- CARGAR DATOS CON DESCARGA AUTOMÁTICA DE IMÁGENES COMPRIMIDAS OFFLINE ---
   Future<void> _cargarBorrador() async {
     final localDB = LocalDBService();
     final provider = Provider.of<Protocolo5Provider>(context, listen: false);
     const String baseUrl = "https://deepbug-backend.onrender.com/api";
 
-    // 1. MODO ONLINE: Descarga desde el Estacion + compresión en segundo plano
     try {
       final prefs = await SharedPreferences.getInstance();
       final token =
           prefs.getString('token') ?? prefs.getString('auth_token') ?? '';
 
-      // 🕵️‍♂️ Apuntamos al estacion para jalar su zona e índice personalizado
       final urlEstacion = Uri.parse('$baseUrl/estaciones/${widget.estacionId}');
 
       final response = await http.get(
@@ -60,7 +55,6 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
       if (response.statusCode == 200) {
         final Map<String, dynamic> estacionData = jsonDecode(response.body);
 
-        // Extraemos de forma segura el catálogo de familias asociado a la cuenca
         List dataCatalogo = [];
         if (estacionData['zona_id'] != null &&
             estacionData['zona_id']['catalogo_familias'] != null) {
@@ -73,29 +67,23 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
           Map<String, dynamic> familiaMap = Map<String, dynamic>.from(f);
           String urlOriginal = f['imagen_url']?.toString() ?? '';
 
-          // 🕵️‍♂️ HACK CLOUDINARY: Si es una URL válida, pedimos miniatura ultra-ligera
           if (urlOriginal.contains('/upload/')) {
             String urlComprimida = urlOriginal.replaceAll(
               '/upload/',
               '/upload/w_250,h_250,c_scale,q_50/',
             );
             try {
-              // Descargamos los pocos kilobytes
               final resImg = await http
                   .get(Uri.parse(urlComprimida))
                   .timeout(const Duration(seconds: 3));
               if (resImg.statusCode == 200) {
-                // La guardamos convertida en texto plano
                 familiaMap['imagen_base64'] = base64Encode(resImg.bodyBytes);
               }
             } catch (_) {
-              // Si falla, continúa sin romper el flujo
             }
           }
           catalogoModificadoConFotos.add(familiaMap);
         }
-
-        // 🔥 RESPALDO OFFLINE COMPLETO: Guardamos JSON con fotos incrustadas y puntajes reales
         await prefs.setString(
           'catalogo_cache_${widget.estacionId}',
           jsonEncode(catalogoModificadoConFotos),
@@ -110,7 +98,6 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
                 f['familia_id']?.toString() ??
                 '',
             nombre: f['nombre_familia']?.toString() ?? 'Sin nombre',
-            // 📊 Toma el valor dinámico guardado en la cuenca (fallback a 0.0)
             valor:
                 double.tryParse(
                   f['valor_bmwp']?.toString() ??
@@ -120,7 +107,7 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
                 0.0,
             imagenUrl: f['imagen_url']?.toString() ?? '',
             imagenBase64: f['imagen_base64']
-                ?.toString(), // En memoria listo para usarse
+                ?.toString(), 
           );
         }).toList();
 
@@ -155,7 +142,7 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
                 0.0,
             imagenUrl: f['imagen_url']?.toString() ?? '',
             imagenBase64: f['imagen_base64']
-                ?.toString(), // Recuperado sin internet
+                ?.toString(), 
           );
         }).toList();
 
@@ -163,7 +150,6 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
       }
     }
 
-    // 2. Extraemos el progreso local de la muestra (SQLite)
     try {
       Map<String, dynamic>? data = await localDB.obtenerBorradorLocal(
         widget.estacionId,
@@ -201,8 +187,6 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
 
     if (mounted) setState(() => _isLoadingData = false);
   }
-
-  // --- GUARDAR PROTOCOLO 5 (FORMATO EXACTO PARA LA WEB ORIGINAL) ---
   Future<bool> _guardarProtocolo() async {
     setState(() => _isSubmitting = true);
     final provider = Provider.of<Protocolo5Provider>(context, listen: false);
@@ -273,7 +257,6 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
     return false;
   }
 
-  // --- EVALUACIÓN DE CALIDAD DE AGUA (BMWP-RBTC) ---
   Map<String, dynamic> _obtenerCalidadAgua(double puntaje) {
     if (puntaje > 68) {
       return {
@@ -291,7 +274,7 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
       return {
         'etiqueta': 'Regular: Aguas contaminadas',
         'color': Colors.yellow.shade800,
-      }; // shade800 para mejor lectura
+      };
     } else if (puntaje > 13) {
       return {
         'etiqueta': 'Mala: Aguas muy contaminadas',
@@ -377,7 +360,7 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Índice BMWP-RBTC',
+                                'Índice BMWP',
                                 style: TextStyle(
                                   color: Theme.of(
                                     context,
@@ -386,12 +369,8 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
                                 ),
                               ),
                               Text(
-                                'Puntaje: ${provider.puntajeTotal}',
-                                style: TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: calidad['color'],
-                                ),
+                                'Puntaje: ${provider.puntajeTotal.toStringAsFixed(2).replaceAll(RegExp(r'\.?0*$'), '')}', 
+                                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: calidad['color'])
                               ),
                               Text(
                                 calidad['etiqueta'],
@@ -576,9 +555,8 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
       ),
     );
   }
-} // <--- LLAVE DE CIERRE CLAVE DE LA CLASE STATE: Aquí terminaba el error
+}
 
-// --- PANTALLA DEL CATÁLOGO MANUAl (CON BUSCADOR INTEGRADO) ---
 class CatalogoManualScreen extends StatefulWidget {
   const CatalogoManualScreen({super.key});
 
@@ -613,7 +591,6 @@ class _CatalogoManualScreenState extends State<CatalogoManualScreen> {
             ? const Center(child: CircularProgressIndicator())
             : Column(
                 children: [
-                  // --- BARRA DE BÚSQUEDA ---
                   Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: TextField(
@@ -637,7 +614,6 @@ class _CatalogoManualScreenState extends State<CatalogoManualScreen> {
                       ),
                     ),
                   ),
-                  // --- GRILLA DE RESULTADOS ---
                   Expanded(
                     child: catalogoFiltrado.isEmpty
                         ? const Center(
@@ -672,7 +648,6 @@ class _CatalogoManualScreenState extends State<CatalogoManualScreen> {
   }
 }
 
-// --- TARJETA DEL CATÁLOGO ADAPTATIVA (ONLINE / OFFLINE) ---
 class _ConstruirTarjetaProducto extends StatelessWidget {
   final FamiliaMacroinvertebrado familia;
   const _ConstruirTarjetaProducto({required this.familia});
@@ -686,7 +661,6 @@ class _ConstruirTarjetaProducto extends StatelessWidget {
     final int cantidadActual = itemEnCarrito?.cantidad ?? 0;
     final bool estaAgregado = cantidadActual > 0;
 
-    // 🕵️‍♂️ Validamos si tenemos la miniatura offline disponible
     final bool tieneFotoOffline =
         familia.imagenBase64 != null && familia.imagenBase64!.isNotEmpty;
 
@@ -784,7 +758,6 @@ class _ConstruirTarjetaProducto extends StatelessWidget {
   }
 }
 
-// --- FUNCIÓN DEL CARRITO EMERGENTE CON CANTIDADES CORREGIDAS ---
 void _mostrarCarrito(BuildContext context, Protocolo5Provider provider) {
   showModalBottomSheet(
     context: context,
@@ -839,7 +812,6 @@ void _mostrarCarrito(BuildContext context, Protocolo5Provider provider) {
                                     )
                                   : null,
                             ),
-                            // CORRECCIÓN VISUAL: Mostramos la cantidad directamente al lado del nombre
                             title: Text(
                               '${item.familia.nombre} (x${item.cantidad})',
                               style: const TextStyle(
@@ -871,7 +843,6 @@ void _mostrarCarrito(BuildContext context, Protocolo5Provider provider) {
                                     item.familia.id,
                                   ),
                                 ),
-                                // NUEVO BOTÓN: Para incrementar cantidad directo desde el carrito
                                 IconButton(
                                   icon: const Icon(
                                     Icons.add_circle_outline,
@@ -905,7 +876,6 @@ void _mostrarCarrito(BuildContext context, Protocolo5Provider provider) {
   );
 }
 
-// --- SELECCIONAR FUENTE CON COMPRESIÓN RESPONSIVA EN RED ---
 void _seleccionarFuenteCarrito(
   BuildContext context,
   Protocolo5Provider prov,
@@ -928,7 +898,6 @@ void _seleccionarFuenteCarrito(
             onTap: () async {
               Navigator.pop(context);
               final ImagePicker picker = ImagePicker();
-              // CORRECCIÓN RED: maxWidth y maxHeight reducen el String Base64 para que el backend lo acepte
               final XFile? foto = await picker.pickImage(
                 source: ImageSource.camera,
                 imageQuality: 50,

@@ -9,7 +9,7 @@ import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
 
 class Protocolo2Screen extends StatefulWidget {
-  final String estacionId; // <-- 1. RECIBIMOS EL ID DEL PROYECTO
+  final String estacionId;
 
   const Protocolo2Screen({super.key, required this.estacionId});
 
@@ -21,8 +21,6 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
   bool _isSubmitting = false;
   bool _isLoadingData = true;
 
-  // --- TRUCO SENIOR: Generador dinámico de Controladores ---
-  // En lugar de declarar 50 controladores a mano, este mapa los crea solos
   final Map<String, TextEditingController> _ctrls = {};
 
   TextEditingController _getCtrl(String key) {
@@ -31,8 +29,6 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
     }
     return _ctrls[key]!;
   }
-
-  // --- VARIABLES DE ESTADO (RadioButtons y Checkboxes) ---
   String _horarioSeleccionado = 'AM';
   String _lluviasPrevias = 'No';
   final Map<String, bool> _clima = {
@@ -75,20 +71,14 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
 
   @override
   void dispose() {
-    // Limpiamos la memoria de todos los controladores
     _ctrls.values.forEach((c) => c.dispose());
     super.dispose();
   }
 
-  // --- CARGAR DATOS (SÓLO LOCAL - OFFLINE) ---
   Future<void> _cargarBorrador() async {
     final localDB = LocalDBService();
     
-    // 1. SOLAMENTE buscamos el progreso guardado en el teléfono (SQLite)
     Map<String, dynamic>? data = await localDB.obtenerBorradorLocal(widget.estacionId, 2);
-    
-    // ELIMINADO: La llamada a cloudService.obtenerMiBorrador() se quitó por completo.
-    // Con esto evitamos que la nube sobrescriba la data y borre nuestra fotografía offline.
 
     if (data != null && data['datos_formulario'] != null) {
       final form = data['datos_formulario'];
@@ -115,7 +105,6 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
         _erosionLocal = form['erosion']?.toString() ?? '';
         _coberturaDosel = form['dosel']?.toString() ?? '';
         
-        // RECUPERAMOS LA FOTO SANA Y SALVA
         _fotoBase64 = form['foto_base64']?.toString();
 
         // Función de seguridad interna para mapear los checkboxes
@@ -142,9 +131,7 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
     }
   }
 
-  // --- PREPARAR JSON ---
   Map<String, dynamic> _prepararJSON() {
-    // Extraemos todos los textos de nuestros controladores dinámicos
     Map<String, String> textos = {};
     _ctrls.forEach((key, controller) {
       textos[key] = controller.text.trim();
@@ -181,7 +168,6 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
     };
   }
 
-  // --- 1. FUNCIÓN PARA ABRIR LA CÁMARA O GALERÍA ---
   Future<void> _capturarFoto(ImageSource fuente) async {
     final ImagePicker picker = ImagePicker();
     // imageQuality: 50 comprime la foto para no saturar SQLite
@@ -194,8 +180,6 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
       });
     }
   }
-
-  // --- 2. MODAL PARA ELEGIR LA FUENTE ---
   void _mostrarOpcionesImagen() {
     showModalBottomSheet(
       context: context,
@@ -211,7 +195,7 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
               leading: const Icon(Icons.camera_alt_outlined),
               title: const Text('Tomar foto con la cámara'),
               onTap: () {
-                Navigator.pop(context); // Cierra el menú
+                Navigator.pop(context);
                 _capturarFoto(ImageSource.camera);
               },
             ),
@@ -219,18 +203,17 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
               leading: const Icon(Icons.photo_library_outlined),
               title: const Text('Elegir de la galería'),
               onTap: () {
-                Navigator.pop(context); // Cierra el menú
+                Navigator.pop(context); 
                 _capturarFoto(ImageSource.gallery);
               },
             ),
-            const SizedBox(height: 16), // Espacio extra al final
+            const SizedBox(height: 16), 
           ],
         ),
       ),
     );
   }
 
-  // --- GUARDAR PROTOCOLO (OFFLINE FIRST) ---
   Future<bool> _guardarProtocolo() async {
     setState(() => _isSubmitting = true);
     Map<String, dynamic> datosCompletos = _prepararJSON(); 
@@ -261,7 +244,6 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
     return false;
   }
 
-  // --- FLECHA HACIA ATRÁS ---
   Future<bool> _alPresionarAtras() async {
     bool? guardar = await showDialog(
       context: context,
@@ -286,7 +268,6 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
     return false;
   }
 
-  // --- SELECTORES NATIVOS ---
   Future<void> _seleccionarFecha(String key) async {
     DateTime? seleccion = await showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2030));
     if (seleccion != null) _getCtrl(key).text = "${seleccion.day.toString().padLeft(2,'0')}/${seleccion.month.toString().padLeft(2,'0')}/${seleccion.year}";
@@ -322,7 +303,7 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
           slivers: [
             SliverAppBar(
               pinned: true,
-              expandedHeight: 220.0, // <-- CORRECCIÓN: Evita el pixel overflow
+              expandedHeight: 220.0,
               elevation: 1,
               leading: IconButton(icon: const Icon(Icons.arrow_back_ios), onPressed: _alPresionarAtras),
               title: const Text('Protocolo 2', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
@@ -345,7 +326,6 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
               padding: const EdgeInsets.all(16.0),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
-                  // 1 y 2. DATOS GENERALES
                   _buildSeccionExpandible(
                     titulo: 'Datos Generales', icono: Icons.map_outlined,
                     contenido: [
@@ -397,7 +377,6 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // 3. CONDICIONES CLIMÁTICAS
                   _buildSeccionExpandible(
                     titulo: 'Condiciones Climáticas', icono: Icons.cloud_outlined,
                     contenido: [
@@ -418,22 +397,19 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // 4. LOCALIZACIÓN Y FOTO
                   _buildSeccionExpandible(
                     titulo: 'Localización y Fotografía', icono: Icons.camera_alt_outlined,
                     contenido: [
                       Text('Adjunta una fotografía de la estación de muestreo.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                       const SizedBox(height: 12),
-                      // --- CONTENEDOR INTERACTIVO ---
                       GestureDetector(
                         onTap: _mostrarOpcionesImagen,
                         child: Container(
-                          height: 200, // Lo hicimos de 200 para que la foto se vea mejor
+                          height: 200,
                           width: double.infinity,
                           decoration: BoxDecoration(
                             color: Theme.of(context).colorScheme.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(12),
-                            // Si ya hay foto, la ponemos de fondo tapando todo el contenedor
                             image: _fotoBase64 != null
                                 ? DecorationImage(
                                     image: MemoryImage(base64Decode(_fotoBase64!)),
@@ -441,7 +417,6 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
                                   )
                                 : null,
                           ),
-                          // Si NO hay foto, mostramos el icono y texto. Si SÍ hay foto, mostramos un botoncito flotante para editarla.
                           child: _fotoBase64 == null
                               ? Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
@@ -466,14 +441,12 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
                                 ),
                         ),
                       ),
-                      // -----------------------------------
                       const SizedBox(height: 16),
                       _buildCampoTexto('codigo_foto', 'Código de fotografía'),
                     ],
                   ),
                   const SizedBox(height: 12),
 
-                  // 5. CUERPO DE AGUA
                   _buildSeccionExpandible(
                     titulo: 'Características del Cuerpo de Agua', icono: Icons.water_outlined,
                     contenido: [
@@ -499,8 +472,6 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-
-                  // 6. COBERTURA BOSCOSA
                   _buildSeccionExpandible(
                     titulo: 'Cobertura Boscosa y Uso de Tierra', icono: Icons.nature_outlined,
                     contenido: [
@@ -519,7 +490,6 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // 7. DESCARGAS
                   _buildSeccionExpandible(
                     titulo: 'Descargas y Modificaciones', icono: Icons.delete_outline,
                     contenido: [
@@ -547,7 +517,6 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // 8. VEGETACIÓN ACUÁTICA
                   _buildSeccionExpandible(
                     titulo: 'Vegetación Acuática', icono: Icons.grass_outlined,
                     contenido: [
@@ -559,7 +528,6 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // 9. CALIDAD DEL AGUA
                   _buildSeccionExpandible(
                     titulo: 'Calidad del Agua', icono: Icons.science_outlined,
                     contenido: [
@@ -621,7 +589,6 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  // NUEVA SECCIÓN: PARÁMETROS IN SITU
                   _buildSeccionExpandible(
                     titulo: 'Parámetros In Situ', icono: Icons.thermostat_outlined,
                     contenido: [
@@ -646,7 +613,6 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  // 10. MEDICIONES
                   _buildSeccionExpandible(
                     titulo: ' Mediciones (Cuerpo de Agua)', icono: Icons.straighten_outlined,
                     contenido: [
@@ -681,8 +647,6 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
     );
   }
 
-  // --- WIDGETS AUXILIARES ---
-
   Widget _buildSeccionExpandible({required String titulo, required IconData icono, required List<Widget> contenido}) {
     return Card(
       child: Theme(
@@ -701,7 +665,7 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: TextFormField(
-        controller: _getCtrl(key), // <-- TRUCO APLICADO
+        controller: _getCtrl(key),
         readOnly: esLectura,
         onTap: onTap,
         keyboardType: tecladoNumerico ? TextInputType.number : TextInputType.text,
@@ -784,7 +748,7 @@ class _Protocolo2ScreenState extends State<Protocolo2Screen> {
     return SizedBox(
       height: 40,
       child: TextFormField(
-        controller: _getCtrl(key), // <-- TRUCO APLICADO EN LA MATRIZ
+        controller: _getCtrl(key),
         keyboardType: TextInputType.number, textAlign: TextAlign.center,
         decoration: InputDecoration(
           hintText: hint, hintStyle: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),

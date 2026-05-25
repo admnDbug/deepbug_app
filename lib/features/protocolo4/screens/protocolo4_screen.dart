@@ -5,7 +5,7 @@ import '../../../core/services/protocolo_service.dart';
 import '../../../core/services/local_db_service.dart';
 
 class Protocolo4Screen extends StatefulWidget {
-  final String estacionId; // <-- NUEVO: RECIBIMOS EL ID DEL PROYECTO
+  final String estacionId;
 
   const Protocolo4Screen({super.key, required this.estacionId});
 
@@ -17,7 +17,6 @@ class _Protocolo4ScreenState extends State<Protocolo4Screen> {
   bool _isSubmitting = false;
   bool _isLoadingData = true;
 
-  // --- TRUCO SENIOR: Controladores Dinámicos para textos ---
   final Map<String, TextEditingController> _ctrls = {};
 
   TextEditingController _getCtrl(String key) {
@@ -27,12 +26,10 @@ class _Protocolo4ScreenState extends State<Protocolo4Screen> {
     return _ctrls[key]!;
   }
 
-  // --- VARIABLES: 4. FAUNA ASOCIADA (0 a 4) ---
   final Map<String, int> _faunaAsociada = {
     'Perifiton': 0, 'Algas filament.': 0, 'Macrófitas': 0, 'Macroinvertebrados': 0, 'Peces': 0, 'Porífera': 0,
   };
 
-  // --- VARIABLES: 5. ESTIMACIÓN PRELIMINAR (0 a 4) ---
   final Map<String, int> _estimacionPreliminar = {
     'Gasteropoda': 0, 'Bivalvia': 0, 'Turbellaria': 0, 'Oligochaeta': 0, 'Hirudinea': 0, 'Diptera': 0,
     'Amphipoda': 0, 'Isopoda': 0, 'Cangrejo': 0, 'Camarón': 0, 'Ephemeroptera': 0, 'Plecoptera': 0,
@@ -51,29 +48,21 @@ class _Protocolo4ScreenState extends State<Protocolo4Screen> {
     super.dispose();
   }
 
-  // --- CARGAR DATOS (SÓLO LOCAL - OFFLINE) ---
   Future<void> _cargarBorrador() async {
     final localDB = LocalDBService();
     
-    // 1. SOLAMENTE buscamos el progreso guardado en el teléfono (SQLite)
     Map<String, dynamic>? data = await localDB.obtenerBorradorLocal(widget.estacionId, 4);
-    
-    // ELIMINADO: La llamada a cloudService.obtenerMiBorrador() se quitó por completo.
-    // Con esto evitamos sobreescrituras en campo si la señal de internet es intermitente.
 
     if (data != null && data['datos_formulario'] != null) {
       final form = data['datos_formulario'];
       
       if (mounted) {
         setState(() {
-          // Cargar textos dinámicos (porcentajes, arrastres, método, observaciones)
           if (form['textos'] != null) {
             form['textos'].forEach((key, value) {
               _getCtrl(key).text = value.toString();
             });
           }
-
-          // Cargar mapas de fauna (0 a 4)
           if (form['fauna_asociada'] != null) {
             form['fauna_asociada'].forEach((k, v) => _faunaAsociada[k] = (v as num).toInt());
           }
@@ -89,7 +78,6 @@ class _Protocolo4ScreenState extends State<Protocolo4Screen> {
     }
   }
 
-  // --- PREPARAR JSON ---
   Map<String, dynamic> _prepararJSON() {
     Map<String, String> textos = {};
     _ctrls.forEach((key, controller) {
@@ -102,8 +90,6 @@ class _Protocolo4ScreenState extends State<Protocolo4Screen> {
       "estimacion_preliminar": _estimacionPreliminar,
     };
   }
-
-  // --- GUARDAR PROTOCOLO (OFFLINE FIRST) ---
   Future<bool> _guardarProtocolo() async {
     setState(() => _isSubmitting = true);
     Map<String, dynamic> datosCompletos = _prepararJSON(); 
@@ -133,8 +119,6 @@ class _Protocolo4ScreenState extends State<Protocolo4Screen> {
     }
     return false;
   }
-
-  // --- FLECHA HACIA ATRÁS ---
   Future<bool> _alPresionarAtras() async {
     bool? guardar = await showDialog(
       context: context,
@@ -252,7 +236,6 @@ class _Protocolo4ScreenState extends State<Protocolo4Screen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // 4. FAUNA ASOCIADA
                   _buildSeccionExpandible(
                     context: context, titulo: 'Fauna Asociada', icono: Icons.pets_outlined,
                     contenido: [
@@ -267,7 +250,6 @@ class _Protocolo4ScreenState extends State<Protocolo4Screen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // 5. ESTIMACIÓN PRELIMINAR
                   _buildSeccionExpandible(
                     context: context, titulo: 'Estimación Preliminar (Campo)', icono: Icons.bug_report_outlined,
                     contenido: [
@@ -286,12 +268,11 @@ class _Protocolo4ScreenState extends State<Protocolo4Screen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // 6. OBSERVACIONES
                   _buildSeccionExpandible(
                     context: context, titulo: 'Observaciones', icono: Icons.notes_outlined,
                     contenido: [
                       TextFormField(
-                        controller: _getCtrl('observaciones'), // <-- Ahora sí se guarda en base de datos
+                        controller: _getCtrl('observaciones'),
                         maxLines: 5,
                         decoration: InputDecoration(
                           hintText: 'Escribe aquí cualquier comentario adicional...',
@@ -313,7 +294,6 @@ class _Protocolo4ScreenState extends State<Protocolo4Screen> {
     );
   }
 
-  // --- WIDGETS AUXILIARES ---
   Widget _buildSeccionExpandible({required BuildContext context, required String titulo, required IconData icono, required List<Widget> contenido}) {
     return Card(
       child: Theme(

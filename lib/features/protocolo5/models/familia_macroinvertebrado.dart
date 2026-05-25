@@ -5,13 +5,13 @@ class FamiliaMacroinvertebrado {
   final String nombre;
   final double valor;
   final String imagenUrl;
-  final String? imagenBase64; // 👈 LÍNEA AGREGADA
+  final String? imagenBase64; 
 
   FamiliaMacroinvertebrado({
     required this.id, 
     required this.nombre, 
     required this.valor, 
     required this.imagenUrl,
-    this.imagenBase64, // 👈 LÍNEA AGREGADA
+    this.imagenBase64, 
   });
 }

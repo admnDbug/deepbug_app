@@ -23,7 +23,6 @@ class _Protocolo1ScreenState extends State<Protocolo1Screen> {
   bool _isSubmitting = false;
   bool _isLoadingData = true;
 
-  // REMOVIDO: El controlador del nombre del estacion ya no es necesario en pantalla
   final _contactoCtrl = TextEditingController();
   final _provinciaCtrl = TextEditingController();
   final _objetivoCtrl = TextEditingController();
@@ -32,7 +31,6 @@ class _Protocolo1ScreenState extends State<Protocolo1Screen> {
 
   List<TextEditingController> _tecnicosCtrls = [];
 
-  // 2. NUEVA ESTRUCTURA: Equipos (Checkboxes compuestos web)
   bool _adecuacionEmb = false; bool _adecuacionEmbNo = false; final _causaAdecuacionCtrl = TextEditingController();
   bool _limpiezaEq = false; bool _limpiezaEqNo = false; final _causaLimpiezaCtrl = TextEditingController();
   bool _verifMetrologica = false; final _obsEquiposCtrl = TextEditingController();
@@ -40,7 +38,6 @@ class _Protocolo1ScreenState extends State<Protocolo1Screen> {
   final List<String> _listaEquipos = ['Flujómetro', 'Termómetro', 'Conductivímetro', 'Multiparámetros', 'GPS', 'Cámara fotográfica'];
   late Map<String, Map<String, bool>> _equiposDetalle;
 
-  // 4. NUEVA ESTRUCTURA: Insumos fijos y dinámicos ("Otros Insumos")
   final Map<String, TextEditingController> _insumosCtrls = {};
   final List<String> _nombresInsumosBase = [
     'Red tipo D', 'Envases plásticos', 'Caja de Herramienta', 'R. Triangular', 'Frascos fisicoq.', 'Tijeras', 
@@ -109,7 +106,6 @@ class _Protocolo1ScreenState extends State<Protocolo1Screen> {
     };
   }
 
-  // --- FUNCIONES EXTRACTORAS ROBUSTAS ---
   bool _parseBool(dynamic value) {
     if (value == null) return false;
     if (value is bool) return value;
@@ -124,7 +120,6 @@ class _Protocolo1ScreenState extends State<Protocolo1Screen> {
     return value.toString();
   }
 
-  // --- CARGAR BORRADOR CORREGIDO (SIN REGISTROS PREMATUROS) ---
 Future<void> _cargarBorrador() async {
     final localDB = LocalDBService();
     final cloudService = ProtocoloService();
@@ -138,8 +133,6 @@ Future<void> _cargarBorrador() async {
     }
 
     if (data == null || data['datos_formulario'] == null) {
-      // ✅ CORRECCIÓN: Preparamos el estado visual en memoria (estado 1),
-      // pero NO creamos ningún registro físico en SQLite hasta que el usuario pulse "Guardar".
       setState(() { _estadoProtocolo = 1; });
     } else {
       final form = data['datos_formulario'];
@@ -162,7 +155,6 @@ Future<void> _cargarBorrador() async {
           }
         }
         
-        // CARGA DE MATERIALES
         if (form['verificacion_materiales'] != null) {
           var mat = form['verificacion_materiales'];
           var eq = mat['equipos'] ?? {};
@@ -325,7 +317,6 @@ Future<void> _cargarBorrador() async {
               padding: const EdgeInsets.all(16.0),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
-                  // SECCIÓN 6 (Verificación web)
                   _buildSeccionExpandible(context: context, titulo: 'Verificación de Materiales', icono: Icons.checklist_rtl_outlined, contenido: [
                     const Text('a) Equipos e instrumentos de medición', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blue)),
                     const SizedBox(height: 12),
@@ -333,7 +324,6 @@ Future<void> _cargarBorrador() async {
                     _buildCheckComplejoWeb('Limpieza de los equipos', _limpiezaEq, _limpiezaEqNo, _causaLimpiezaCtrl, (val){ setState(()=> _limpiezaEq = val!);}, (val){ setState(()=> _limpiezaEqNo = val!);}),
                     CheckboxListTile(title: const Text('Verificación metrológica de los instrumentos', style: TextStyle(fontWeight: FontWeight.bold)), value: _verifMetrologica, onChanged: (v)=> setState(()=> _verifMetrologica = v!), controlAffinity: ListTileControlAffinity.leading),
                     const SizedBox(height: 12),
-                    // Reemplaza el GridView.builder por esto:
                     Column(
                       children: _listaEquipos.map((eq) {
                         return Container(
@@ -375,12 +365,11 @@ Future<void> _cargarBorrador() async {
                       ],
                     ))).toList()),
     
-                    // OTROS INSUMOS DINÁMICOS
                     const SizedBox(height: 16),
                     Container(
                       padding: const EdgeInsets.all(12), 
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest, // <--- Adaptativo al tema
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest, 
                         borderRadius: BorderRadius.circular(8)
                       ),
                       child: Column(
@@ -408,7 +397,6 @@ Future<void> _cargarBorrador() async {
                   ]),
                   const SizedBox(height: 40),
                   _buildSeccionExpandible(context: context, titulo: 'Datos Generales', icono: Icons.business_center_outlined, contenido: [
-                    // MODIFICACIÓN: El campo de "Nombre del Estacion" ha sido eliminado por completo de la UI
                     _buildCampoTexto(context, 'Persona de contacto', controlador: _contactoCtrl),
                     _buildCampoTexto(context, 'Provincia o provincias', controlador: _provinciaCtrl),
                     const Divider(height: 32),

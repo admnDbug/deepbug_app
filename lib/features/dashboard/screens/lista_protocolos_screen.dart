@@ -1,7 +1,7 @@
 // Archivo: lib/features/dashboard/screens/lista_protocolos_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // <--- VITAL para el Clipboard
+import 'package:flutter/services.dart'; 
 import '../../protocolo1/screens/protocolo1_screen.dart';
 import '../../protocolo2/screens/protocolo2_screen.dart';
 import '../../protocolo3/screens/protocolo3_screen.dart';
@@ -45,7 +45,6 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
 
   String _obtenerIniciales(String nombre) {
     if (nombre.trim().isEmpty) return '--';
-    // Dividimos usando expresión regular para ignorar espacios dobles o múltiples
     List<String> partes = nombre.trim().split(RegExp(r'\s+'));
     if (partes.length > 1) {
       return '${partes[0][0]}${partes[1][0]}'.toUpperCase();
@@ -139,7 +138,6 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // CAMBIO CLAVE: Los candados de bloqueo lógicos se eliminan. Todos los protocolos quedan activos.
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -169,7 +167,6 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
               icono: Icons.business_center_outlined,
               activo: true,
               onTap: () async {
-                // Pasamos el nombre del estacion para que se pueda autollenar si es virgen
                 await Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -186,7 +183,7 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
               titulo: 'Protocolo 2',
               subtitulo: 'Evaluación Visual del Hábitat',
               icono: Icons.map_outlined,
-              activo: true, // Siempre abierto
+              activo: true, 
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -198,7 +195,7 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
               titulo: 'Protocolo 3',
               subtitulo: 'Caracterización del Hábitat',
               icono: Icons.nature_outlined,
-              activo: true, // Siempre abierto
+              activo: true, 
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -210,7 +207,7 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
               titulo: 'Protocolo 4',
               subtitulo: 'Muestreo Multihábitat',
               icono: Icons.pets_outlined,
-              activo: true, // Siempre abierto
+              activo: true,
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -222,7 +219,7 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
               titulo: 'Protocolo 5',
               subtitulo: 'Identificación IA (CNN)',
               icono: Icons.document_scanner_outlined,
-              activo: true, // Siempre abierto
+              activo: true,
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -299,7 +296,6 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
                             widget.codigoEstacion,
                             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 2),
                           ),
-                          // CAMBIO CLAVE: Se implementa la copia física al portapapeles nativo
                           IconButton(
                             icon: Icon(Icons.copy, color: Theme.of(context).colorScheme.primary),
                             onPressed: () async {
@@ -395,7 +391,6 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
   Widget _buildBannerAdvertencia() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
-    // Conservamos ÚNICAMENTE la advertencia crítica roja (Planificación incompleta)
     if (_estadoP1 == 0) {
       return Container(
         padding: const EdgeInsets.all(12),
@@ -421,7 +416,6 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
       );
     } 
     
-    // Si el estado es 1 (In Situ naranja) o 2 (Completado), ocultamos el banner por completo
     return const SizedBox.shrink();
   }
 
@@ -441,7 +435,7 @@ class _ListaProtocolosScreenState extends State<ListaProtocolosScreen> {
         title: Text(titulo, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         subtitle: Text(subtitulo, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-        onTap: onTap, // Al remover los candados lógicos, ejecuta directo la función de navegación
+        onTap: onTap, 
       ),
     );
   }

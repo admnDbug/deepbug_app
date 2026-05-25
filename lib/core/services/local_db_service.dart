@@ -24,19 +24,17 @@ class LocalDBService {
     String path = join(await getDatabasesPath(), 'deep_bug_local.db');
     return await openDatabase(
       path,
-      version: 2, // <-- 1. Subimos la versión de 1 a 2
+      version: 2, 
       onCreate: (db, version) async {
         await _crearTablas(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
-        // <-- 2. Si detecta una base de datos vieja, la borra y la rehace
         await db.execute('DROP TABLE IF EXISTS protocolos_locales');
         await _crearTablas(db);
       },
     );
   }
 
-  // Separamos la creación para poder reutilizarla
   Future<void> _crearTablas(Database db) async {
     await db.execute('''
       CREATE TABLE protocolos_locales (
@@ -50,7 +48,6 @@ class LocalDBService {
     ''');
   }
 
-  // --- GUARDAR O ACTUALIZAR BORRADOR LOCAL (AISLADO POR PERFIL) ---
   Future<void> guardarBorradorLocal({
     required String estacionId,
     required int protocoloNumero,
@@ -59,14 +56,11 @@ class LocalDBService {
   }) async {
     final db = await database;
 
-    // 🕵️‍♂️ Extraemos quién tiene la sesión activa actualmente
     final prefs = await SharedPreferences.getInstance();
     final String usuarioId = prefs.getString('usuario_id') ?? 'anonimo';
 
-    // Creamos la firma única compuesta para este usuario y este estacion
     final String idAisladoPorPerfil = "${usuarioId}_$estacionId";
 
-    // Buscamos si ya existe un registro previo de este protocolo para este perfil específico
     final res = await db.query(
       'protocolos_locales',
       where: 'estacion_id = ? AND protocolo_numero = ?',
@@ -74,7 +68,6 @@ class LocalDBService {
     );
 
     if (res.isNotEmpty) {
-      // Si ya existe, actualizamos su JSON sin tocar el de otros usuarios
       await db.update(
         'protocolos_locales',
         {
@@ -89,7 +82,7 @@ class LocalDBService {
       // Si no existe, creamos un registro completamente nuevo bajo este perfil
       await db.insert('protocolos_locales', {
         'id': const Uuid().v4(),
-        'estacion_id': idAisladoPorPerfil, // <-- Guardamos la llave blindada
+        'estacion_id': idAisladoPorPerfil, 
         'protocolo_numero': protocoloNumero,
         'datos_formulario': jsonEncode(datosFormulario),
         'sincronizado': sincronizado,
@@ -98,7 +91,6 @@ class LocalDBService {
     }
   }
 
-  // --- OBTENER BORRADOR LOCAL (FILTRADO POR PERFIL ACTIVE) ---
   Future<Map<String, dynamic>?> obtenerBorradorLocal(
     String estacionId,
     int protocoloNumero,
@@ -119,7 +111,6 @@ class LocalDBService {
     if (res.isNotEmpty) {
       return {
         ...res.first,
-        // IMPORTANTE: Devolvemos el estacionId original limpio a la UI para que la pantalla no note el truco
         'estacion_id': estacionId,
         'datos_formulario': jsonDecode(res.first['datos_formulario'] as String),
       };
@@ -127,13 +118,11 @@ class LocalDBService {
     return null; // Si cambió de sesión y el nuevo perfil no tiene borrador, abre limpio en 0%
   }
 
-  // --- BUSCAR TODOS LOS PENDIENTES DE SINCRONIZAR (CURE CONTRACRASH NODE) ---
   Future<List<Map<String, dynamic>>> obtenerPendientes() async {
     final db = await database;
 
     final res = await db.query('protocolos_locales', where: 'sincronizado = 0');
 
-    // Re-armamos la lista limpiando y dividiendo la llave compuesta antes de enviarla al servicio de red
     return res.map((row) {
       final String dbId = row['estacion_id'].toString();
 
@@ -145,7 +134,7 @@ class LocalDBService {
       return {
         ...row,
         'estacion_id':
-            cleanEstacionId, // <-- El ID limpio de 24 caracteres viaja feliz a la API
+            cleanEstacionId, 
         'datos_formulario': jsonDecode(row['datos_formulario'] as String),
       };
     }).toList();
