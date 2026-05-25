@@ -79,7 +79,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
       path: imagen.path,
       imageMean: 0.0,    
       imageStd: 1.0,     
-      numResults: 5,     
+      numResults: 3,     
       threshold: 0.0,    
       asynch: true,
     );
