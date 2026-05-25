@@ -36,125 +36,82 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
     final localDB = LocalDBService();
     final provider = Provider.of<Protocolo5Provider>(context, listen: false);
     const String baseUrl = "https://deepbug-backend.onrender.com/api";
+    final prefs = await SharedPreferences.getInstance();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token =
-          prefs.getString('token') ?? prefs.getString('auth_token') ?? '';
+      // 1. INTENTO DE CACHE HIT (Leer memoria local primero)
+      final String? catalogoGuardado = prefs.getString('catalogo_cache_${widget.estacionId}');
 
-      final urlEstacion = Uri.parse('$baseUrl/estaciones/${widget.estacionId}');
-
-      final response = await http.get(
-        urlEstacion,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> estacionData = jsonDecode(response.body);
-
-        List dataCatalogo = [];
-        if (estacionData['zona_id'] != null &&
-            estacionData['zona_id']['catalogo_familias'] != null) {
-          dataCatalogo = estacionData['zona_id']['catalogo_familias'];
-        }
-
-        List<Map<String, dynamic>> catalogoModificadoConFotos = [];
-
-        for (var f in dataCatalogo) {
-          Map<String, dynamic> familiaMap = Map<String, dynamic>.from(f);
-          String urlOriginal = f['imagen_url']?.toString() ?? '';
-
-          if (urlOriginal.contains('/upload/')) {
-            String urlComprimida = urlOriginal.replaceAll(
-              '/upload/',
-              '/upload/w_250,h_250,c_scale,q_50/',
-            );
-            try {
-              final resImg = await http
-                  .get(Uri.parse(urlComprimida))
-                  .timeout(const Duration(seconds: 3));
-              if (resImg.statusCode == 200) {
-                familiaMap['imagen_base64'] = base64Encode(resImg.bodyBytes);
-              }
-            } catch (_) {
-            }
-          }
-          catalogoModificadoConFotos.add(familiaMap);
-        }
-        await prefs.setString(
-          'catalogo_cache_${widget.estacionId}',
-          jsonEncode(catalogoModificadoConFotos),
-        );
-
-        List<FamiliaMacroinvertebrado>
-        familiasBd = catalogoModificadoConFotos.map((f) {
-          return FamiliaMacroinvertebrado(
-            id:
-                f['_id']?.toString() ??
-                f['id']?.toString() ??
-                f['familia_id']?.toString() ??
-                '',
-            nombre: f['nombre_familia']?.toString() ?? 'Sin nombre',
-            valor:
-                double.tryParse(
-                  f['valor_bmwp']?.toString() ??
-                      f['valor']?.toString() ??
-                      '0.0',
-                ) ??
-                0.0,
-            imagenUrl: f['imagen_url']?.toString() ?? '',
-            imagenBase64: f['imagen_base64']
-                ?.toString(), 
-          );
-        }).toList();
-
-        provider.actualizarCatalogo(familiasBd);
-      }
-    } catch (e) {
-      debugPrint(
-        "Modo Offline: Extrayendo catálogo e imágenes de zona desde SharedPreferences...",
-      );
-
-      final prefs = await SharedPreferences.getInstance();
-      final String? catalogoGuardado = prefs.getString(
-        'catalogo_cache_${widget.estacionId}',
-      );
-
-      if (catalogoGuardado != null) {
+      if (catalogoGuardado != null && catalogoGuardado.isNotEmpty) {
+        // ¡CACHE HIT! Existe localmente, lo cargamos instantáneamente
+        debugPrint("CACHE HIT: Cargando catálogo desde SharedPreferences...");
         List dataCatalogo = jsonDecode(catalogoGuardado);
+        
         List<FamiliaMacroinvertebrado> familiasBd = dataCatalogo.map((f) {
           return FamiliaMacroinvertebrado(
-            id:
-                f['_id']?.toString() ??
-                f['id']?.toString() ??
-                f['familia_id']?.toString() ??
-                '',
+            id: f['_id']?.toString() ?? f['id']?.toString() ?? f['familia_id']?.toString() ?? '',
             nombre: f['nombre_familia']?.toString() ?? 'Sin nombre',
-            valor:
-                double.tryParse(
-                  f['valor_bmwp']?.toString() ??
-                      f['valor']?.toString() ??
-                      '0.0',
-                ) ??
-                0.0,
+            valor: double.tryParse(f['valor_bmwp']?.toString() ?? f['valor']?.toString() ?? '0.0') ?? 0.0,
             imagenUrl: f['imagen_url']?.toString() ?? '',
-            imagenBase64: f['imagen_base64']
-                ?.toString(), 
+            imagenBase64: f['imagen_base64']?.toString(), 
           );
         }).toList();
 
         provider.actualizarCatalogo(familiasBd);
-      }
-    }
+      } else {
+        // 2. CACHE MISS (No existe localmente, toca descargar de la nube)
+        debugPrint("CACHE MISS: Descargando catálogo desde la nube...");
+        final token = prefs.getString('token') ?? prefs.getString('auth_token') ?? '';
+        final urlEstacion = Uri.parse('$baseUrl/estaciones/${widget.estacionId}');
 
-    try {
-      Map<String, dynamic>? data = await localDB.obtenerBorradorLocal(
-        widget.estacionId,
-        5,
-      );
+        final response = await http.get(
+          urlEstacion,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        );
+
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> estacionData = jsonDecode(response.body);
+          List dataCatalogo = estacionData['zona_id']?['catalogo_familias'] ?? [];
+          List<Map<String, dynamic>> catalogoModificadoConFotos = [];
+
+          for (var f in dataCatalogo) {
+            Map<String, dynamic> familiaMap = Map<String, dynamic>.from(f);
+            String urlOriginal = f['imagen_url']?.toString() ?? '';
+
+            if (urlOriginal.contains('/upload/')) {
+              String urlComprimida = urlOriginal.replaceAll('/upload/', '/upload/w_250,h_250,c_scale,q_50/');
+              try {
+                final resImg = await http.get(Uri.parse(urlComprimida)).timeout(const Duration(seconds: 3));
+                if (resImg.statusCode == 200) {
+                  familiaMap['imagen_base64'] = base64Encode(resImg.bodyBytes);
+                }
+              } catch (_) {}
+            }
+            catalogoModificadoConFotos.add(familiaMap);
+          }
+
+          // Guardamos en caché para que la próxima vez sea instantáneo
+          await prefs.setString('catalogo_cache_${widget.estacionId}', jsonEncode(catalogoModificadoConFotos));
+
+          List<FamiliaMacroinvertebrado> familiasBd = catalogoModificadoConFotos.map((f) {
+            return FamiliaMacroinvertebrado(
+              id: f['_id']?.toString() ?? f['id']?.toString() ?? f['familia_id']?.toString() ?? '',
+              nombre: f['nombre_familia']?.toString() ?? 'Sin nombre',
+              valor: double.tryParse(f['valor_bmwp']?.toString() ?? f['valor']?.toString() ?? '0.0') ?? 0.0,
+              imagenUrl: f['imagen_url']?.toString() ?? '',
+              imagenBase64: f['imagen_base64']?.toString(), 
+            );
+          }).toList();
+
+          provider.actualizarCatalogo(familiasBd);
+        }
+      }
+
+      // 3. CARGAR EL CARRITO LOCAL (Borrador del Protocolo)
+      Map<String, dynamic>? data = await localDB.obtenerBorradorLocal(widget.estacionId, 5);
       if (data != null && data['datos_formulario'] != null) {
         final form = data['datos_formulario'];
         List? fams = form['datos_protocolo_5']?['familias_encontradas'];
