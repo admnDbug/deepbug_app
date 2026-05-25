@@ -1,17 +1,17 @@
-// Archivo: lib/features/dashboard/screens/crear_biomonitoreo_screen.dart
+// Archivo: lib/features/dashboard/screens/crear_estacion_screen.dart
 
 import 'package:flutter/material.dart';
-import '../services/biomonitoreo_service.dart';
+import '../services/estacion_service.dart';
 import 'dashboard_screen.dart';
 
-class CrearBiomonitoreoScreen extends StatefulWidget {
-  const CrearBiomonitoreoScreen({super.key});
+class CrearEstacionScreen extends StatefulWidget {
+  const CrearEstacionScreen({super.key});
 
   @override
-  State<CrearBiomonitoreoScreen> createState() => _CrearBiomonitoreoScreenState();
+  State<CrearEstacionScreen> createState() => _CrearEstacionScreenState();
 }
 
-class _CrearBiomonitoreoScreenState extends State<CrearBiomonitoreoScreen> {
+class _CrearEstacionScreenState extends State<CrearEstacionScreen> {
   final TextEditingController _nombreController = TextEditingController();
   
   List<dynamic> _zonas = [];
@@ -27,7 +27,7 @@ class _CrearBiomonitoreoScreenState extends State<CrearBiomonitoreoScreen> {
   }
 
   Future<void> _cargarZonasDisponibles() async {
-    final service = BiomonitoreoService();
+    final service = EstacionService();
     final zonasDesdeBackend = await service.obtenerZonas();
 
     if (mounted) {
@@ -38,13 +38,13 @@ class _CrearBiomonitoreoScreenState extends State<CrearBiomonitoreoScreen> {
     }
   }
 
-  void _crearProyecto() async {
+  void _crearEstacion() async {
     final nombre = _nombreController.text.trim();
 
     // Validaciones básicas
     if (nombre.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, ingresa un nombre para el proyecto.'), backgroundColor: Colors.orange),
+        const SnackBar(content: Text('Por favor, ingresa un nombre para la estacion.'), backgroundColor: Colors.orange),
       );
       return;
     }
@@ -58,20 +58,20 @@ class _CrearBiomonitoreoScreenState extends State<CrearBiomonitoreoScreen> {
     FocusScope.of(context).unfocus();
     setState(() => _isSubmitting = true);
 
-    final service = BiomonitoreoService();
-    final resultado = await service.crearBiomonitoreo(nombre, _zonaSeleccionadaId!);
+    final service = EstacionService();
+    final resultado = await service.crearestacion(nombre, _zonaSeleccionadaId!);
 
     setState(() => _isSubmitting = false);
 
     if (resultado != null && mounted) {
-      final codigoGenerado = resultado['proyecto']['codigo_invitacion'];
+      final codigoGenerado = resultado['Estacion']['codigo_invitacion'];
       
       // Mostramos el código de invitación generado por el backend
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (context) => AlertDialog(
-          title: const Text('¡Proyecto Creado!'),
+          title: const Text('¡Estacion Creado!'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -100,7 +100,7 @@ class _CrearBiomonitoreoScreenState extends State<CrearBiomonitoreoScreen> {
       );
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error al crear el proyecto. Intenta de nuevo.'), backgroundColor: Colors.red),
+        const SnackBar(content: Text('Error al crear la estacion. Intenta de nuevo.'), backgroundColor: Colors.red),
       );
     }
   }
@@ -117,7 +117,7 @@ class _CrearBiomonitoreoScreenState extends State<CrearBiomonitoreoScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Nuevo Biomonitoreo', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Nueva estacion', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -128,7 +128,7 @@ class _CrearBiomonitoreoScreenState extends State<CrearBiomonitoreoScreen> {
               Icon(Icons.add_location_alt_outlined, size: 80, color: colorScheme.primary),
               const SizedBox(height: 24),
               Text(
-                'Crear biomonitoreo',
+                'Crear estacion',
                 style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: colorScheme.onSurface),
                 textAlign: TextAlign.center,
               ),
@@ -145,7 +145,7 @@ class _CrearBiomonitoreoScreenState extends State<CrearBiomonitoreoScreen> {
                 controller: _nombreController,
                 textCapitalization: TextCapitalization.words,
                 decoration: InputDecoration(
-                  labelText: 'Nombre del Proyecto (Ej. biomonitoreo Lerma)',
+                  labelText: 'Nombre de la Estacion',
                   filled: true,
                   fillColor: colorScheme.surfaceContainerHighest,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -165,7 +165,7 @@ class _CrearBiomonitoreoScreenState extends State<CrearBiomonitoreoScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Text(
-                        'No hay Zonas Geográficas disponibles. Un Administrador debe crear una zona antes de poder iniciar un biomonitoreo.',
+                        'No hay Zonas Geográficas disponibles. Un Administrador debe crear una zona antes de poder iniciar una estacion.',
                         style: TextStyle(color: Colors.red),
                         textAlign: TextAlign.center,
                       ),
@@ -218,7 +218,7 @@ class _CrearBiomonitoreoScreenState extends State<CrearBiomonitoreoScreen> {
               SizedBox(
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: _isSubmitting || _zonas.isEmpty ? null : _crearProyecto,
+                  onPressed: _isSubmitting || _zonas.isEmpty ? null : _crearEstacion,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colorScheme.primary,
                     foregroundColor: colorScheme.onPrimary,
@@ -226,7 +226,7 @@ class _CrearBiomonitoreoScreenState extends State<CrearBiomonitoreoScreen> {
                   ),
                   child: _isSubmitting
                       ? SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: colorScheme.onPrimary, strokeWidth: 2))
-                      : const Text('Crear Proyecto y Generar Código', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      : const Text('Crear Estacion y Generar Código', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
             ],

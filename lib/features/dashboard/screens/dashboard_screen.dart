@@ -2,10 +2,10 @@
 
 import 'package:flutter/material.dart';
 import 'lista_protocolos_screen.dart';
-import 'unirse_proyecto_screen.dart';
-import 'crear_biomonitoreo_screen.dart';
+import 'unirse_estacion_screen.dart';
+import 'crear_estacion_screen.dart';
 import '../../profile/screens/perfil_usuario_screen.dart';
-import '../services/biomonitoreo_service.dart';
+import '../services/estacion_service.dart';
 import '../../auth/services/auth_service.dart';
 import '../../../core/services/local_db_service.dart';
 import '../../../core/services/protocolo_service.dart';
@@ -28,9 +28,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<Map<String, dynamic>> _listaPendientes = [];
   bool _isSyncing = false;
 
-  List<dynamic> _biomonitoreos = [];
+  List<dynamic> _estaciones = [];
   bool _isLoading = true;
   String? _errorMessage;
+
+  TextEditingController _searchController = TextEditingController();
+  List<dynamic> _estacionesFiltradas = []; // Nueva lista para el buscador
 
   @override
   void initState() {
@@ -68,7 +71,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _cargarPerfilLocal(prefs);
     }
 
-    await _cargarBiomonitoreos();
+    await _cargarEstaciones();
   }
 
   void _cargarPerfilLocal(SharedPreferences prefs) {
@@ -102,7 +105,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     await _inicializarDatos(); 
   }
 
-  Future<void> _cargarBiomonitoreos() async {
+  Future<void> _cargarEstaciones() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -110,36 +113,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     await _revisarPendientesLocales();
 
-    final bioService = BiomonitoreoService();
-    final datosBackend = await bioService.obtenerBiomonitoreos();
+    final bioService = EstacionService();
+    final datosBackend = await bioService.obtenerEstaciones();
     
     final prefs = await SharedPreferences.getInstance();
 
     if (datosBackend != null) {
-      prefs.setString('proyectos_cache', jsonEncode(datosBackend));
-      
+      prefs.setString('estacions_cache', jsonEncode(datosBackend));
       setState(() {
-        _biomonitoreos = datosBackend;
+        _estaciones = datosBackend;
+        _estacionesFiltradas = datosBackend; // Inicializamos ambas listas
         _isLoading = false;
       });
     } else {
-      final cache = prefs.getString('proyectos_cache');
+      final cache = prefs.getString('estacions_cache');
       
       if (cache != null) {
         setState(() {
-          _biomonitoreos = jsonDecode(cache); 
+          _estaciones = jsonDecode(cache); 
+          _estacionesFiltradas = jsonDecode(cache); // Inicializamos ambas listas
           _isLoading = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sin conexión. Mostrando proyectos guardados localmente.'), backgroundColor: Colors.blueGrey),
+          const SnackBar(content: Text('Sin conexión. Mostrando estaciones guardadas localmente.'), backgroundColor: Colors.blueGrey),
         );
       } else {
         setState(() {
-          _errorMessage = 'No se pudieron cargar los proyectos. Verifica tu conexión.';
+          _errorMessage = 'No se pudieron cargar las estaciones. Verifica tu conexión.';
           _isLoading = false;
         });
       }
     }
+  }
+
+  // Nueva función para el buscador
+  void _filtrarEstaciones(String query) {
+    if (query.isEmpty) {
+      setState(() => _estacionesFiltradas = _estaciones);
+      return;
+    }
+    setState(() {
+      _estacionesFiltradas = _estaciones.where((estacion) {
+        final nombre = estacion['nombre_estacion']?.toLowerCase() ?? '';
+        return nombre.contains(query.toLowerCase());
+      }).toList();
+    });
   }
 
   // --- SINCRONIZAR TODO (INTEGRACIÓN INTELIGENTE PARA PROTOCOLO 5) ---
@@ -166,7 +184,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         // Realizamos el disparo usando el contrato oficial de tu Web original
         ok = await cloudService.sincronizarProtocolo(
-          item['biomonitoreo_id'],
+          item['estacion_id'],
           numProtocolo,
           null, // datos_formulario va nulo explícitamente para el 5
           datosProtocolo5: datosP5,
@@ -174,7 +192,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       } else {
         // Protocolos del 1 al 4 se sincronizan de forma tradicional
         ok = await cloudService.sincronizarProtocolo(
-          item['biomonitoreo_id'],
+          item['estacion_id'],
           numProtocolo,
           datosForm,
         );
@@ -183,7 +201,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       // Si el servidor dio luz verde, actualizamos SQLite localmente para este usuario
       if (ok) {
         await localDB.guardarBorradorLocal(
-          biomonitoreoId: item['biomonitoreo_id'],
+          estacionId: item['estacion_id'],
           protocoloNumero: numProtocolo,
           datosFormulario: datosForm,
           sincronizado: 1, // <--- Ahora sí pasará a estar limpio
@@ -192,9 +210,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     }
 
-    // Refrescamos contadores y la lista de proyectos en pantalla
+    // Refrescamos contadores y la lista de estacion en pantalla
     await _revisarPendientesLocales();
-    await _cargarBiomonitoreos();
+    await _cargarEstaciones();
     setState(() => _isSyncing = false);
 
     if (mounted) {
@@ -252,7 +270,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
               const Text(
-                'Tus Proyectos Activos',
+                'Tus Estaciones Activas',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
@@ -295,8 +313,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                 ),
+              // BUSCADOR IMPLEMENTADO
+              TextField(
+                controller: _searchController,
+                onChanged: _filtrarEstaciones,
+                decoration: InputDecoration(
+                  hintText: 'Buscar estación...',
+                  prefixIcon: const Icon(Icons.search),
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
 
-              Expanded(child: _buildListaBiomonitoreos()),
+              Expanded(child: _buildListaEstaciones()),
               const SizedBox(height: 16),
 
               ElevatedButton.icon(
@@ -304,14 +338,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const UnirseProyectoScreen(),
+                      builder: (context) => const UnirseEstacionScreen(),
                     ),
                   );
-                  _cargarBiomonitoreos(); 
+                  _cargarEstaciones(); 
                 },
                 icon: const Icon(Icons.group_add),
                 label: const Text(
-                  'Unirme a un Biomonitoreo',
+                  'Unirme a un Estacion',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
@@ -325,12 +359,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const CrearBiomonitoreoScreen(),
+                      builder: (context) => const CrearEstacionScreen(),
                     ),
                   ),
                   icon: const Icon(Icons.add_location_alt_outlined),
                   label: const Text(
-                    'Crear Nuevo Biomonitoreo',
+                    'Crear Nuevo Estacion',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   style: OutlinedButton.styleFrom(
@@ -352,7 +386,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildListaBiomonitoreos() {
+  Widget _buildListaEstaciones() {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -369,7 +403,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: _cargarBiomonitoreos,
+              onPressed: _cargarEstaciones,
               child: const Text('Reintentar'),
             ),
           ],
@@ -377,10 +411,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
-    if (_biomonitoreos.isEmpty) {
+    if (_estaciones.isEmpty) {
       return const Center(
         child: Text(
-          'Aún no tienes proyectos asignados.\nÚnete a uno o crea uno nuevo.',
+          'Aún no tienes estaciones asignadas.\nÚnete a una o crea una nueva.',
           textAlign: TextAlign.center,
         ),
       );
@@ -391,36 +425,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
       color: Theme.of(context).colorScheme.primary, 
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(), 
-        itemCount: _biomonitoreos.length,
+        itemCount: _estacionesFiltradas.length,
         itemBuilder: (context, index) {
-          final proyecto = _biomonitoreos[index];
+          final estacion = _estacionesFiltradas[index];
 
           int estadoP1 = 0;
-          if (proyecto['estado_protocolos'] != null &&
-              proyecto['estado_protocolos']['protocolo1'] != null) {
-            estadoP1 = proyecto['estado_protocolos']['protocolo1'];
+          if (estacion['estado_protocolos'] != null &&
+              estacion['estado_protocolos']['protocolo1'] != null) {
+            estadoP1 = estacion['estado_protocolos']['protocolo1'];
           }
 
           // --- ACTUALIZADO: Extracción de la zona desde zona_id ---
         String zonaText = 'Zona no especificada';
         
-        if (proyecto['zona_id'] != null) {
+        if (estacion['zona_id'] != null) {
           // Si el backend hizo el populate, zona_id será un Mapa
-          if (proyecto['zona_id'] is Map) {
-            zonaText = proyecto['zona_id']['nombre'] ?? 'Zona sin nombre';
+          if (estacion['zona_id'] is Map) {
+            zonaText = estacion['zona_id']['nombre'] ?? 'Zona sin nombre';
           } else {
             // Si por alguna razón llega solo el ID (String)
-            zonaText = 'ID: ${proyecto['zona_id'].toString().substring(0, 5)}...';
+            zonaText = 'ID: ${estacion['zona_id'].toString().substring(0, 5)}...';
           }
         }
 
         return _buildProjectCard(
           context,
-          proyecto['_id'].toString(),
-          proyecto['nombre_proyecto'] ?? 'Proyecto Sin Nombre',
+          estacion['_id'].toString(),
+          estacion['nombre_estacion'] ?? 'Estación Sin Nombre',
           'Activo',
           zonaText, // <--- Ahora pasamos el nombre real
-          proyecto['codigo_invitacion'] ?? 'S/C',
+          estacion['codigo_invitacion'] ?? 'S/C',
           estadoP1,
         );
       },
@@ -483,15 +517,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
             context,
             MaterialPageRoute(
               builder: (context) => ListaProtocolosScreen(
-                biomonitoreoId: id, 
-                nombreProyecto: name,
+                estacionId: id, 
+                nombreEstacion: name,
                 estadoProtocolo1: estadoP1,
                 rolUsuario: userRole,
-                codigoProyecto: code, // El código sigue viajando oculto
+                codigoEstacion: code, // El código sigue viajando oculto
               ),
             ),
           );
-          _cargarBiomonitoreos();
+          _cargarEstaciones();
         },
       ),
     );

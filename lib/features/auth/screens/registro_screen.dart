@@ -108,7 +108,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
               const SizedBox(height: 24),
               const Text('Crear Cuenta', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
               const SizedBox(height: 8),
-              const Text('Únete a un biomonitoreo ingresando tu código', textAlign: TextAlign.center),
+              const Text('Únete a una estacion ingresando tu código', textAlign: TextAlign.center),
               const SizedBox(height: 40),
 
               // --- FORMULARIO CON CONTROLADORES ---
