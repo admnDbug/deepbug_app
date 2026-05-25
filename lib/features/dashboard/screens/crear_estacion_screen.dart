@@ -60,44 +60,60 @@ class _CrearEstacionScreenState extends State<CrearEstacionScreen> {
     final service = EstacionService();
     final resultado = await service.crearestacion(nombre, _zonaSeleccionadaId!);
 
+    // Validamos que el widget siga montado después de la petición web antes de hacer setState
+    if (!mounted) return;
     setState(() => _isSubmitting = false);
 
-    if (resultado != null && mounted) {
-      final codigoGenerado = resultado['Estacion']['codigo_invitacion'];
-      
-      // Mostramos el código de invitación generado por el backend
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: const Text('¡Estacion Creado!'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Comparte este código con tus colaboradores para que se unan:'),
-              const SizedBox(height: 16),
-              Text(
-                codigoGenerado,
-                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: 2),
+    if (resultado != null) {
+      try {
+        // CORRECCIÓN DEL CRASHEO:
+        // Buscamos la llave 'estacion' (minúscula) o leemos directo de 'codigo_invitacion'
+        // dependiendo de cómo estructuraste la respuesta en el backend.
+        final codigoGenerado = resultado['estacion'] != null 
+            ? resultado['estacion']['codigo_invitacion']
+            : resultado['codigo_invitacion'];
+            
+        // Si no encuentra el código, lanzamos un error para atraparlo en el catch
+        if (codigoGenerado == null) throw Exception('Código no encontrado en el JSON');
+        
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text('¡Estación Creada!'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Comparte este código con tus colaboradores para que se unan:'),
+                const SizedBox(height: 16),
+                Text(
+                  codigoGenerado.toString(),
+                  style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: 2),
+                ),
+              ],
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const DashboardScreen()),
+                    (Route<dynamic> route) => false,
+                  );
+                },
+                child: const Text('Entendido'),
               ),
             ],
           ),
-          actions: [
-            ElevatedButton(
-              onPressed: () {
-                // Cerramos el diálogo y regresamos al Dashboard recargado
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const DashboardScreen()),
-                  (Route<dynamic> route) => false,
-                );
-              },
-              child: const Text('Entendido'),
-            ),
-          ],
-        ),
-      );
-    } else if (mounted) {
+        );
+      } catch (e) {
+        debugPrint('Error al mapear la respuesta: $e');
+        debugPrint('Respuesta cruda del backend: $resultado');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Estación creada, pero hubo un error visual. Regresa al inicio.'), backgroundColor: Colors.orange),
+        );
+      }
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Error al crear la estacion. Intenta de nuevo.'), backgroundColor: Colors.red),
       );

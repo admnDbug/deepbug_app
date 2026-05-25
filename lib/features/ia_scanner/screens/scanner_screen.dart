@@ -61,7 +61,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
     final ImagePicker picker = ImagePicker();
     final XFile? foto = await picker.pickImage(
       source: fuente,
-      imageQuality: 50,
+      imageQuality: 100,
     );
 
     if (foto != null) {
@@ -74,25 +74,13 @@ class _ScannerScreenState extends State<ScannerScreen> {
   }
 
   Future<void> _clasificarImagen(File imagen) async {
-    final bytes = await imagen.readAsBytes();
-    img.Image? originalImage = img.decodeImage(bytes);
 
-    if (originalImage != null) {
-      int cropSize = math.min(originalImage.width, originalImage.height);
-      int offsetX = (originalImage.width - cropSize) ~/ 2;
-      int offsetY = (originalImage.height - cropSize) ~/ 2;
-
-      img.Image croppedImage = img.copyCrop(originalImage,
-          x: offsetX, y: offsetY, width: cropSize, height: cropSize);
-
-      await imagen.writeAsBytes(img.encodeJpg(croppedImage));
-    }
     var predicciones = await Tflite.runModelOnImage(
       path: imagen.path,
-      imageMean: 127.5,
-      imageStd: 127.5,
-      numResults: 5, 
-      threshold: 0.1,
+      imageMean: 0.0,    
+      imageStd: 1.0,     
+      numResults: 5,     
+      threshold: 0.0,    
       asynch: true,
     );
 
@@ -196,18 +184,34 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
                                     return Card(
                                       margin: const EdgeInsets.only(bottom: 8),
-                                      child: ListTile(
+                                        child: ListTile(
                                         leading: CircleAvatar(
+                                          radius: 26,
                                           backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                                          child: Text('${porcentaje.toStringAsFixed(0)}%', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(4.0),
+                                            child: FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Text(
+                                                '${porcentaje.toStringAsFixed(2)}%', 
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold, 
+                                                  color: Theme.of(context).colorScheme.primary,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
                                         ),
-                                        title: Text(nombreFamiliaTFLite, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                        trailing: ElevatedButton(
-                                          onPressed: () => _agregarDesdeIA(context, nombreFamiliaTFLite),
-                                          child: const Text('Agregar'),
-                                        ),
+                                      title: Text(
+                                        nombreFamiliaTFLite, 
+                                        style: const TextStyle(fontWeight: FontWeight.bold),
                                       ),
-                                    );
+                                      trailing: ElevatedButton(
+                                        onPressed: () => _agregarDesdeIA(context, nombreFamiliaTFLite),
+                                        child: const Text('Agregar'),
+                                      ),
+                                    ),
+                                  );
                                   },
                                 ),
                               ),
