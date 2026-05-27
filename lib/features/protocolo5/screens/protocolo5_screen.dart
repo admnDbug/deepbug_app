@@ -35,7 +35,7 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
   Future<void> _cargarBorrador() async {
     final localDB = LocalDBService();
     final provider = Provider.of<Protocolo5Provider>(context, listen: false);
-    const String baseUrl = "https://deepbug-backend.onrender.com/api";
+    const String baseUrl = "";// Agregar URL backend
     final prefs = await SharedPreferences.getInstance();
 
     try {
@@ -43,7 +43,7 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
       final String? catalogoGuardado = prefs.getString('catalogo_cache_${widget.estacionId}');
 
       if (catalogoGuardado != null && catalogoGuardado.isNotEmpty) {
-        // ¡CACHE HIT! Existe localmente, lo cargamos instantáneamente
+        
         debugPrint("CACHE HIT: Cargando catálogo desde SharedPreferences...");
         List dataCatalogo = jsonDecode(catalogoGuardado);
         
@@ -59,7 +59,7 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
 
         provider.actualizarCatalogo(familiasBd);
       } else {
-        // 2. CACHE MISS (No existe localmente, toca descargar de la nube)
+        
         debugPrint("CACHE MISS: Descargando catálogo desde la nube...");
         final token = prefs.getString('token') ?? prefs.getString('auth_token') ?? '';
         final urlEstacion = Uri.parse('$baseUrl/estaciones/${widget.estacionId}');
@@ -93,7 +93,7 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
             catalogoModificadoConFotos.add(familiaMap);
           }
 
-          // Guardamos en caché para que la próxima vez sea instantáneo
+          
           await prefs.setString('catalogo_cache_${widget.estacionId}', jsonEncode(catalogoModificadoConFotos));
 
           List<FamiliaMacroinvertebrado> familiasBd = catalogoModificadoConFotos.map((f) {
@@ -110,7 +110,7 @@ class _Protocolo5ScreenState extends State<Protocolo5Screen> {
         }
       }
 
-      // 3. CARGAR EL CARRITO LOCAL (Borrador del Protocolo)
+      
       Map<String, dynamic>? data = await localDB.obtenerBorradorLocal(widget.estacionId, 5);
       if (data != null && data['datos_formulario'] != null) {
         final form = data['datos_formulario'];
